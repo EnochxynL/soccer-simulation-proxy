@@ -184,7 +184,8 @@ SampleCoach::initImpl( CmdLineParser & cmd_parser )
     {
         if ( config().teamGraphicFile().empty() )
         {
-            M_team_graphic.createXpmTiles( team_logo_xpm );
+            // NOTE: createXpmTiles() not available in this version of librcsc
+            // M_team_graphic.createXpmTiles( team_logo_xpm );
         }
         else
         {
