@@ -561,7 +561,7 @@ soccer::WorldModel ThriftStateGenerator::convertWorldModel(const rcsc::WorldMode
     res.their_defense_player_line_x = static_cast<float>(wm.theirDefensePlayerLineX());
     if(wm.gameMode().isPenaltyKickMode())
     {
-        res.penalty_kick_state = convertPenaltyKickState(wm, wm.penaltyKickState());
+        res.penalty_kick_state = convertPenaltyKickState(wm, &wm.penaltyKickState());
     }
     res.see_time = wm.seeTime().cycle();
     res.time_stopped = wm.time().stopped();
