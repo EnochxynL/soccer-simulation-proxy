@@ -1,0 +1,125 @@
+param(
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$ArgsList
+)
+
+$libPath = "@LIBRCSC_LIBDIR@"
+if ($libPath -and $libPath -notmatch "@.+@") {
+    if ($env:PATH) {
+        $env:PATH = "$libPath;$env:PATH"
+    }
+    else {
+        $env:PATH = $libPath
+    }
+}
+
+$dir = $PSScriptRoot
+$player = Join-Path $dir "sample_player.exe"
+$trainer = Join-Path $dir "sample_trainer.exe"
+$teamname = "TRAINER_MODE"
+$host = "localhost"
+$rpc_host = "localhost"
+$rpc_port = 50051
+$rpc_port_step = $false
+$rpc_add_20_to_port_for_right = $false
+$rpc_type = "thrift"
+$config = Join-Path $dir "player.conf"
+$config_dir = Join-Path $dir "formations-dt"
+$debugopt = @("--offline_logging", "--debug", "--debug_server_connect")
+
+function Show-Usage {
+    Write-Output "Usage: $($MyInvocation.MyCommand.Name) [options]"
+    Write-Output "  --help"
+    Write-Output "  -h, --host HOST"
+    Write-Output "  -t, --teamname TEAMNAME"
+    Write-Output "  --rpc-host HOST"
+    Write-Output "  --rpc-port PORT"
+    Write-Output "  --rpc-port-step"
+    Write-Output "  --rpc-add-20-to-port-for-right"
+    Write-Output "  --rpc-type [thrift|grpc]"
+}
+
+function Require-Value([int]$Index, [string]$Name) {
+    if ($Index -ge $ArgsList.Count) {
+        Write-Error "missing value for $Name"
+        Show-Usage
+        exit 1
+    }
+}
+
+$i = 0
+while ($i -lt $ArgsList.Count) {
+    $arg = $ArgsList[$i]
+    switch ($arg) {
+        "--help" {
+            Show-Usage
+            exit 0
+        }
+        "-h" {
+            $i++; Require-Value $i $arg; $host = $ArgsList[$i]
+        }
+        "--host" {
+            $i++; Require-Value $i $arg; $host = $ArgsList[$i]
+        }
+        "-t" {
+            $i++; Require-Value $i $arg; $teamname = $ArgsList[$i]
+        }
+        "--teamname" {
+            $i++; Require-Value $i $arg; $teamname = $ArgsList[$i]
+        }
+        "--rpc-host" {
+            $i++; Require-Value $i $arg; $rpc_host = $ArgsList[$i]
+        }
+        "--rpc-port" {
+            $i++; Require-Value $i $arg; $rpc_port = [int]$ArgsList[$i]
+        }
+        "--rpc-port-step" {
+            $rpc_port_step = $true
+        }
+        "--rpc-add-20-to-port-for-right" {
+            $rpc_add_20_to_port_for_right = $true
+        }
+        "--rpc-type" {
+            $i++; Require-Value $i $arg; $rpc_type = $ArgsList[$i]
+        }
+        default {
+            Write-Error "invalid option: $arg"
+            Show-Usage
+            exit 1
+        }
+    }
+    $i++
+}
+
+if (-not (Test-Path $player)) {
+    Write-Error "cannot find executable: $player"
+    exit 1
+}
+if (-not (Test-Path $trainer)) {
+    Write-Error "cannot find executable: $trainer"
+    exit 1
+}
+
+$playerOpt = @(
+    "-h", $host,
+    "-t", $teamname,
+    "--player-config", $config,
+    "--config_dir", $config_dir,
+    "-n", "1",
+    "--rpc-type", $rpc_type
+)
+$playerOpt += $debugopt
+
+$trainerOpt = @(
+    "-h", $host,
+    "-t", $teamname,
+    "--rpc-host", $rpc_host,
+    "--rpc-port", $rpc_port,
+    "--rpc-type", $rpc_type
+)
+if ($rpc_port_step) { $trainerOpt += "--rpc-port-step" }
+if ($rpc_add_20_to_port_for_right) { $trainerOpt += "--rpc-add-20-to-port-for-right" }
+
+Start-Process -FilePath $player -ArgumentList $playerOpt | Out-Null
+Start-Sleep -Seconds 0
+Start-Process -FilePath $trainer -ArgumentList $trainerOpt | Out-Null

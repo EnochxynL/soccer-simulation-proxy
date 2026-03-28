@@ -1,0 +1,205 @@
+param(
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$ArgsList
+)
+
+$banner = @(
+    "******************************************************************",
+    " HELIOS base",
+    " National Institute of Advanced Industrial Science and Technology",
+    " Created by Hidehisa Akiyama and Hiroki Shimora",
+    " Copyright 2000-2007.  Hidehisa Akiyama",
+    " Copyright 2007-2010.  Hidehisa Akiyama and Hiroki Shimora",
+    " All rights reserved.",
+    "******************************************************************"
+)
+$banner | ForEach-Object { Write-Output $_ }
+
+$libPath = "@LIBRCSC_LIBDIR@"
+if ($libPath -and $libPath -notmatch "@.+@") {
+    if ($env:PATH) {
+        $env:PATH = "$libPath;$env:PATH"
+    }
+    else {
+        $env:PATH = $libPath
+    }
+}
+
+$dir = $PSScriptRoot
+$player = Join-Path $dir "sample_player.exe"
+$trainer = Join-Path $dir "sample_trainer.exe"
+
+$keeper_teamname = "Keeper"
+$taker_teamname = "Taker"
+$host = "localhost"
+$port = 6000
+$coach_port = $null
+$debug_server_host = $null
+$debug_server_port = $null
+
+$player_conf = Join-Path $dir "player.conf"
+$keeper_config_dir = Join-Path $dir "formations-keeper"
+$taker_config_dir = Join-Path $dir "formations-taker"
+
+$debugopt = @()
+$offline_logging = $false
+$offline_mode = $false
+$fullstateopt = @()
+$sleeptime = 0
+
+function Show-Usage {
+    Write-Output "Usage: $($MyInvocation.MyCommand.Name) [options]"
+    Write-Output "  --help"
+    Write-Output "  -h, --host HOST"
+    Write-Output "  -p, --port PORT"
+    Write-Output "  -P, --coach-port PORT"
+    Write-Output "  --offline-logging"
+    Write-Output "  --offline-client-mode"
+    Write-Output "  --debug"
+    Write-Output "  --debug_DEBUG_CATEGORY"
+    Write-Output "  --debug-server-connect"
+    Write-Output "  --debug-server-host HOST"
+    Write-Output "  --debug-server-port PORT"
+    Write-Output "  --debug-server-logging"
+    Write-Output "  --log-dir DIRECTORY"
+    Write-Output "  --debug-log-ext EXTENSION"
+    Write-Output "  --fullstate [ignore|reference|override]"
+}
+
+function Require-Value([int]$Index, [string]$Name) {
+    if ($Index -ge $ArgsList.Count) {
+        Write-Error "missing value for $Name"
+        Show-Usage
+        exit 1
+    }
+}
+
+function Start-Agent([string]$Exe, [string[]]$ArgList) {
+    if (-not (Test-Path $Exe)) {
+        Write-Error "cannot find executable: $Exe"
+        exit 1
+    }
+    Start-Process -FilePath $Exe -ArgumentList $ArgList | Out-Null
+}
+
+$i = 0
+while ($i -lt $ArgsList.Count) {
+    $arg = $ArgsList[$i]
+    switch -Regex ($arg) {
+        '^--help$' {
+            Show-Usage
+            exit 0
+        }
+        '^(-h|--host)$' {
+            $i++; Require-Value $i $arg; $host = $ArgsList[$i]
+        }
+        '^(-p|--port)$' {
+            $i++; Require-Value $i $arg; $port = [int]$ArgsList[$i]
+        }
+        '^(-P|--coach-port)$' {
+            $i++; Require-Value $i $arg; $coach_port = [int]$ArgsList[$i]
+        }
+        '^--offline-logging$' {
+            $offline_logging = $true
+        }
+        '^--offline-client-mode$' {
+            $offline_mode = $true
+        }
+        '^--debug$' {
+            $debugopt += "--debug"
+        }
+        '^--debug-server-connect$' {
+            $debugopt += "--debug_server_connect"
+        }
+        '^--debug-server-host$' {
+            $i++; Require-Value $i $arg; $debug_server_host = $ArgsList[$i]
+        }
+        '^--debug-server-port$' {
+            $i++; Require-Value $i $arg; $debug_server_port = [int]$ArgsList[$i]
+        }
+        '^--debug-server-logging$' {
+            $debugopt += "--debug_server_logging"
+        }
+        '^--log-dir$' {
+            $i++; Require-Value $i $arg; $debugopt += @("--log_dir", $ArgsList[$i])
+        }
+        '^--debug-log-ext$' {
+            $i++; Require-Value $i $arg; $debugopt += @("--debug_log_ext", $ArgsList[$i])
+        }
+        '^--fullstate$' {
+            $i++; Require-Value $i $arg
+            switch ($ArgsList[$i]) {
+                "ignore" { $fullstateopt = @("--use_fullstate", "false", "--debug_fullstate", "false") }
+                "reference" { $fullstateopt = @("--use_fullstate", "false", "--debug_fullstate", "true") }
+                "override" { $fullstateopt = @("--use_fullstate", "true", "--debug_fullstate", "true") }
+                default {
+                    Show-Usage
+                    exit 1
+                }
+            }
+        }
+        '^--debug_.*$' {
+            $debugopt += $arg
+        }
+        default {
+            Write-Error "invalid option: $arg"
+            Show-Usage
+            exit 1
+        }
+    }
+    $i++
+}
+
+if ($offline_logging -and $offline_mode) {
+    Write-Error "'--offline-logging' and '--offline-client-mode' cannot be used simultaneously."
+    exit 1
+}
+
+if ($null -eq $coach_port) {
+    $coach_port = $port + 2
+}
+if ([string]::IsNullOrEmpty($debug_server_host)) {
+    $debug_server_host = $host
+}
+if ($null -eq $debug_server_port) {
+    $debug_server_port = $port + 32
+}
+
+$opt = @(
+    "--player-config", $player_conf,
+    "-h", $host,
+    "-p", $port,
+    "--debug_server_host", $debug_server_host,
+    "--debug_server_port", $debug_server_port
+)
+if ($fullstateopt.Count -gt 0) { $opt += $fullstateopt }
+if ($offline_logging) { $opt += "--offline_logging" }
+if ($debugopt.Count -gt 0) { $opt += $debugopt }
+
+for ($k = 1; $k -le 3; $k++) {
+    $offlineOpt = @()
+    if ($offline_mode) {
+        $offlineOpt = @("--offline_client_number", "$k")
+    }
+    Start-Agent $player ($opt + @("-t", $keeper_teamname, "--config_dir", $keeper_config_dir) + $offlineOpt)
+    Start-Sleep -Seconds $sleeptime
+}
+
+Start-Sleep -Seconds 1
+
+for ($t = 1; $t -le 2; $t++) {
+    $offlineOpt = @()
+    if ($offline_mode) {
+        $offlineOpt = @("--offline_client_number", "$t")
+    }
+    Start-Agent $player ($opt + @("-t", $taker_teamname, "--config_dir", $taker_config_dir) + $offlineOpt)
+    Start-Sleep -Seconds $sleeptime
+}
+
+if (-not $offline_mode) {
+    if (-not (Test-Path $trainer)) {
+        Write-Error "cannot find executable: $trainer"
+        exit 1
+    }
+    & $trainer -h $host -t $keeper_teamname --use_ear on
+}

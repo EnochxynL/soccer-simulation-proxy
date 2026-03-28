@@ -23,7 +23,7 @@ pacman -S mingw-w64-ucrt-x86_64-grpc \
 mkdir build
 cd build
 cmake -G "Unix Makefiles" ..
-make
+make -j
 ```
 
 但是，如果因为GRPC版本不匹配而报错，应当删除`src/grpc-generated`下的`service.pb.cc`和`service.pb.h`重新生成（原文写错了，写成了`src/grpc`目录下的）。

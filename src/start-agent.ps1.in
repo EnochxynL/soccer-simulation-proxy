@@ -1,0 +1,281 @@
+param(
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$ArgsList
+)
+
+$banner = @(
+    "******************************************************************",
+    " HELIOS base",
+    " Created by Hidehisa Akiyama and Hiroki Shimora",
+    " Copyright 2000-2007.  Hidehisa Akiyama",
+    " Copyright 2007-2011.  Hidehisa Akiyama and Hiroki Shimora",
+    " All rights reserved.",
+    "******************************************************************"
+)
+$banner | ForEach-Object { Write-Output $_ }
+
+$libPath = "@LIBRCSC_LIBDIR@"
+if ($libPath -and $libPath -notmatch "@.+@") {
+    if ($env:PATH) {
+        $env:PATH = "$libPath;$env:PATH"
+    }
+    else {
+        $env:PATH = $libPath
+    }
+}
+
+$dir = $PSScriptRoot
+$player = Join-Path $dir "sample_player.exe"
+$coach = Join-Path $dir "sample_coach.exe"
+$teamname = "SSP"
+$host = "localhost"
+$port = 6000
+$rpc_host = "localhost"
+$rpc_port = 50051
+$rpc_port_step = $false
+$rpc_add_20_to_port_for_right = $false
+$rpc_type = "thrift"
+$coach_port = $null
+$debug_server_host = $null
+$debug_server_port = $null
+
+$player_conf = Join-Path $dir "player.conf"
+$config_dir = Join-Path $dir "formations-dt"
+$coach_conf = Join-Path $dir "coach.conf"
+
+$team_graphic = @("--use_team_graphic", "off")
+$is_player = $true
+$is_coach = $false
+$is_goalie = $false
+$goaliesleep = 1
+$sleeptime = 0
+$debugopt = @()
+$offline_logging = $false
+$offline_mode = $false
+$fullstateopt = @()
+
+function Show-Usage {
+    Write-Output "Usage: $($MyInvocation.MyCommand.Name) [options]"
+    Write-Output "Available options:"
+    Write-Output "  --help"
+    Write-Output "  -h, --host HOST"
+    Write-Output "  -p, --port PORT"
+    Write-Output "  -P, --coach-port PORT"
+    Write-Output "  -t, --teamname TEAMNAME"
+    Write-Output "  -f, --formation DIR"
+    Write-Output "  --team-graphic FILE"
+    Write-Output "  --offline-logging"
+    Write-Output "  --offline-client-mode"
+    Write-Output "  --debug"
+    Write-Output "  --debug_DEBUG_CATEGORY"
+    Write-Output "  --debug-start-time TIME"
+    Write-Output "  --debug-end-time TIME"
+    Write-Output "  --debug-server-connect"
+    Write-Output "  --debug-server-host HOST"
+    Write-Output "  --debug-server-port PORT"
+    Write-Output "  --debug-server-logging"
+    Write-Output "  --log-dir DIRECTORY"
+    Write-Output "  --debug-log-ext EXTENSION"
+    Write-Output "  --fullstate [ignore|reference|override]"
+    Write-Output "  --rpc-host HOST"
+    Write-Output "  --rpc-port PORT"
+    Write-Output "  --rpc-port-step"
+    Write-Output "  --rpc-add-20-to-port-for-right"
+    Write-Output "  --rpc-type [thrift|grpc]"
+    Write-Output "  --goalie | --player | --coach"
+}
+
+function Require-Value([int]$Index, [string]$Name) {
+    if ($Index -ge $ArgsList.Count) {
+        Write-Error "missing value for $Name"
+        Show-Usage
+        exit 1
+    }
+}
+
+function Start-Agent([string]$Exe, [string[]]$ArgList) {
+    if (-not (Test-Path $Exe)) {
+        Write-Error "cannot find executable: $Exe"
+        exit 1
+    }
+    Start-Process -FilePath $Exe -ArgumentList $ArgList | Out-Null
+}
+
+$i = 0
+while ($i -lt $ArgsList.Count) {
+    $arg = $ArgsList[$i]
+    switch -Regex ($arg) {
+        '^--help$' {
+            Show-Usage
+            exit 0
+        }
+        '^--rpc-host$' {
+            $i++; Require-Value $i $arg; $rpc_host = $ArgsList[$i]
+        }
+        '^--rpc-port$' {
+            $i++; Require-Value $i $arg; $rpc_port = [int]$ArgsList[$i]
+        }
+        '^--rpc-port-step$' {
+            $rpc_port_step = $true
+        }
+        '^--rpc-add-20-to-port-for-right$' {
+            $rpc_add_20_to_port_for_right = $true
+        }
+        '^--rpc-type$' {
+            $i++; Require-Value $i $arg; $rpc_type = $ArgsList[$i]
+        }
+        '^(-h|--host)$' {
+            $i++; Require-Value $i $arg; $host = $ArgsList[$i]
+        }
+        '^(-p|--port)$' {
+            $i++; Require-Value $i $arg; $port = [int]$ArgsList[$i]
+        }
+        '^(-P|--coach-port)$' {
+            $i++; Require-Value $i $arg; $coach_port = [int]$ArgsList[$i]
+        }
+        '^(-t|--teamname)$' {
+            $i++; Require-Value $i $arg; $teamname = $ArgsList[$i]
+        }
+        '^(-f|--formation)$' {
+            $i++; Require-Value $i $arg; $config_dir = $ArgsList[$i]
+        }
+        '^--team-graphic$' {
+            $i++; Require-Value $i $arg
+            $team_graphic = @("--use_team_graphic", "on", "--team_graphic_file", $ArgsList[$i])
+        }
+        '^--offline-logging$' {
+            $offline_logging = $true
+        }
+        '^--offline-client-mode$' {
+            $offline_mode = $true
+        }
+        '^--debug$' {
+            $debugopt += "--debug"
+        }
+        '^--debug-start-time$' {
+            $i++; Require-Value $i $arg; $debugopt += @("--debug_start_time", $ArgsList[$i])
+        }
+        '^--debug-end-time$' {
+            $i++; Require-Value $i $arg; $debugopt += @("--debug_end_time", $ArgsList[$i])
+        }
+        '^--debug-server-connect$' {
+            $debugopt += "--debug_server_connect"
+        }
+        '^--debug-server-host$' {
+            $i++; Require-Value $i $arg; $debug_server_host = $ArgsList[$i]
+        }
+        '^--debug-server-port$' {
+            $i++; Require-Value $i $arg; $debug_server_port = [int]$ArgsList[$i]
+        }
+        '^--debug-server-logging$' {
+            $debugopt += "--debug_server_logging"
+        }
+        '^--log-dir$' {
+            $i++; Require-Value $i $arg; $debugopt += @("--log_dir", $ArgsList[$i])
+        }
+        '^--debug-log-ext$' {
+            $i++; Require-Value $i $arg; $debugopt += @("--debug_log_ext", $ArgsList[$i])
+        }
+        '^--goalie$' {
+            $is_goalie = $true; $is_player = $false
+        }
+        '^--player$' {
+            $is_player = $true
+        }
+        '^--coach$' {
+            $is_coach = $true; $is_player = $false
+        }
+        '^--fullstate$' {
+            $i++; Require-Value $i $arg
+            switch ($ArgsList[$i]) {
+                "ignore" { $fullstateopt = @("--use_fullstate", "false", "--debug_fullstate", "false") }
+                "reference" { $fullstateopt = @("--use_fullstate", "false", "--debug_fullstate", "true") }
+                "override" { $fullstateopt = @("--use_fullstate", "true", "--debug_fullstate", "true") }
+                default {
+                    Show-Usage
+                    exit 1
+                }
+            }
+        }
+        '^--debug_.*$' {
+            $debugopt += $arg
+        }
+        default {
+            Write-Error "invalid option: $arg"
+            Show-Usage
+            exit 1
+        }
+    }
+    $i++
+}
+
+if (-not $is_player -and -not $is_coach -and -not $is_goalie) {
+    Write-Error "You must specify at least one of --player, --coach, or --goalie."
+    exit 1
+}
+
+if ($offline_logging -and $offline_mode) {
+    Write-Error "'--offline-logging' and '--offline-client-mode' cannot be used simultaneously."
+    exit 1
+}
+
+if ($null -eq $coach_port) {
+    $coach_port = $port + 2
+}
+if ([string]::IsNullOrEmpty($debug_server_host)) {
+    $debug_server_host = $host
+}
+if ($null -eq $debug_server_port) {
+    $debug_server_port = $port + 32
+}
+
+$null = Test-Connection -ComputerName $host -Count 1 -Quiet -ErrorAction SilentlyContinue
+
+$opt = @(
+    "--player-config", $player_conf,
+    "--config_dir", $config_dir,
+    "-h", $host,
+    "-p", $port,
+    "-t", $teamname,
+    "--debug_server_host", $debug_server_host,
+    "--debug_server_port", $debug_server_port,
+    "--rpc-host", $rpc_host,
+    "--rpc-port", $rpc_port,
+    "--rpc-type", $rpc_type
+)
+if ($fullstateopt.Count -gt 0) { $opt += $fullstateopt }
+if ($offline_logging) { $opt += "--offline_logging" }
+if ($debugopt.Count -gt 0) { $opt += $debugopt }
+if ($rpc_port_step) { $opt += "--rpc-port-step" }
+if ($rpc_add_20_to_port_for_right) { $opt += "--rpc-add-20-to-port-for-right" }
+
+if ($is_goalie) {
+    Start-Agent $player ($opt + "-g")
+    Start-Sleep -Seconds $goaliesleep
+}
+
+if ($is_player) {
+    Start-Agent $player $opt
+    Start-Sleep -Seconds $sleeptime
+}
+
+if ($is_coach) {
+    $coachopt = @(
+        "--coach-config", $coach_conf,
+        "-h", $host,
+        "-p", $coach_port,
+        "-t", $teamname,
+        "--debug_server_host", $debug_server_host,
+        "--debug_server_port", $debug_server_port,
+        "--rpc-host", $rpc_host,
+        "--rpc-port", $rpc_port,
+        "--rpc-type", $rpc_type
+    )
+    $coachopt += $team_graphic
+    if ($offline_logging) { $coachopt += "--offline_logging" }
+    if ($debugopt.Count -gt 0) { $coachopt += $debugopt }
+    if ($rpc_port_step) { $coachopt += "--rpc-port-step" }
+    if ($rpc_add_20_to_port_for_right) { $coachopt += "--rpc-add-20-to-port-for-right" }
+
+    Start-Agent $coach $coachopt
+}
