@@ -39,4 +39,7 @@ cd build/bin
 ./start.sh
 ```
 
-很遗憾，虽然我生成了.ps1脚本，但是很多运行库在MSYS2内部，Powershell发现不了，所以无法运行
+在Powershell内执行，还需要环境变量，添加msys2的路径到PATH
+```powershell
+$env:Path = "C:\msys64\ucrt64\bin;C:\msys64\usr\bin;$env:Path"
+```
