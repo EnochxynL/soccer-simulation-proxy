@@ -183,7 +183,8 @@ void GrpcClient::sendServerParam() const
     serverParam.set_trainer_port(SP.trainerPort());
     serverParam.set_online_coach_port(SP.onlineCoachPort());
     serverParam.set_verbose_mode(SP.verboseMode());
-    serverParam.set_coach_send_vi_step(SP.coachSendVIStep());
+    // NOTE: coachSendVIStep() not available in this version of librcsc
+    // serverParam.set_coach_send_vi_step(SP.coachSendVIStep());
     serverParam.set_send_comms(SP.sendComms());
     serverParam.set_text_logging(SP.textLogging());
     serverParam.set_game_logging(SP.gameLogging());

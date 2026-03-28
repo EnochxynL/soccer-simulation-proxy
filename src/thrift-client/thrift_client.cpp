@@ -165,7 +165,8 @@ void ThriftAgent::sendServerParam() const
     serverParam.trainer_port = SP.trainerPort();
     serverParam.online_coach_port = SP.onlineCoachPort();
     serverParam.verbose_mode = SP.verboseMode();
-    serverParam.coach_send_vi_step = SP.coachSendVIStep();
+    // NOTE: coachSendVIStep() not available in this version of librcsc
+    // serverParam.coach_send_vi_step = SP.coachSendVIStep();
     serverParam.send_comms = SP.sendComms();
     serverParam.text_logging = SP.textLogging();
     serverParam.game_logging = SP.gameLogging();
