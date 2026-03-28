@@ -38,3 +38,5 @@ To run the Soccer Simulation Proxy, you can use the following command: (You shou
 cd build/bin
 ./start.sh
 ```
+
+很遗憾，虽然我生成了.ps1脚本，但是很多运行库在MSYS2内部，Powershell发现不了，所以无法运行
