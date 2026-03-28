@@ -48,6 +48,21 @@ namespace {
 SampleTrainer agent;
 std::shared_ptr< rcsc::AbstractClient > client;
 
+#ifdef _WIN32
+/*-------------------------------------------------------------------*/
+BOOL WINAPI
+console_ctrl_handler( DWORD dwCtrlType )
+{
+    if ( dwCtrlType == CTRL_C_EVENT || dwCtrlType == CTRL_BREAK_EVENT )
+    {
+        std::cerr << "Killed. Exiting trainer..." << std::endl;
+        agent.finalize();
+        std::exit( EXIT_FAILURE );
+        return TRUE;
+    }
+    return FALSE;
+}
+#else
 /*-------------------------------------------------------------------*/
 void
 sig_exit_handle( int )
@@ -56,6 +71,7 @@ sig_exit_handle( int )
     agent.finalize();
     std::exit( EXIT_FAILURE );
 }
+#endif
 
 }
 
@@ -64,7 +80,14 @@ sig_exit_handle( int )
 int
 main( int argc, char ** argv )
 {
-#ifndef _WIN32
+#ifdef _WIN32
+    if ( !SetConsoleCtrlHandler( console_ctrl_handler, TRUE ) )
+    {
+        std::cerr << __FILE__ << ": " << __LINE__
+                  << ": could not set console control handler" << std::endl;
+        std::exit( EXIT_FAILURE );
+    }
+#else
     struct sigaction sig_action ;
     sig_action.sa_handler = &sig_exit_handle ;
     sig_action.sa_flags = 0;
