@@ -37,7 +37,11 @@
 #include <cstdlib> // exit
 #include <cerrno> // errno
 #include <cstring> // strerror
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <csignal> // sigaction
+#endif
 
 namespace {
 
@@ -60,6 +64,7 @@ sig_exit_handle( int )
 int
 main( int argc, char ** argv )
 {
+#ifndef _WIN32
     struct sigaction sig_action ;
     sig_action.sa_handler = &sig_exit_handle ;
     sig_action.sa_flags = 0;
@@ -75,6 +80,7 @@ main( int argc, char ** argv )
                   << std::strerror( errno ) << std::endl;
         std::exit( EXIT_FAILURE );
     }
+#endif
 
     {
         rcsc::CmdLineParser cmd_parser( argc, argv );
