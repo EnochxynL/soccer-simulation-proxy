@@ -39,6 +39,7 @@
 #include <cstring> // strerror
 #ifdef _WIN32
 #include <windows.h>
+#include <winsock2.h>
 #else
 #include <csignal> // sigaction
 #endif
@@ -62,6 +63,13 @@ console_ctrl_handler( DWORD dwCtrlType )
     }
     return FALSE;
 }
+
+/*-------------------------------------------------------------------*/
+void
+cleanup_winsock()
+{
+    WSACleanup();
+}
 #else
 /*-------------------------------------------------------------------*/
 void
@@ -81,6 +89,15 @@ int
 main( int argc, char **argv )
 {
 #ifdef _WIN32
+    WSADATA wsa_data;
+    if ( WSAStartup( MAKEWORD(2, 2), &wsa_data ) != 0 )
+    {
+        std::cerr << __FILE__ << ": " << __LINE__
+                  << ": failed to initialize WinSock" << std::endl;
+        std::exit( EXIT_FAILURE );
+    }
+    std::atexit( cleanup_winsock );
+
     if ( !SetConsoleCtrlHandler( console_ctrl_handler, TRUE ) )
     {
         std::cerr << __FILE__ << ": " << __LINE__
