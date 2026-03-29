@@ -20,10 +20,9 @@ pacman -S mingw-w64-ucrt-x86_64-grpc \
 
 然后就可以使用cmake构建了
 ```sh
-mkdir build
-cd build
-cmake -G "Unix Makefiles" ..
-make -j
+rm -r build
+cmake -S . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
 ```
 
 但是，如果因为GRPC版本不匹配而报错，应当删除`src/grpc-generated`下的`service.pb.cc`和`service.pb.h`重新生成（原文写错了，写成了`src/grpc`目录下的）。
@@ -32,6 +31,8 @@ make -j
 ```sh
 protoc --proto_path=. --cpp_out=../../src/grpc-generated/ --grpc_out=../../src/grpc-generated/ --plugin=protoc-gen-grpc=grpc_cpp_plugin service.proto
 ```
+
+## 直接执行
 
 To run the Soccer Simulation Proxy, you can use the following command: (You should run the Soccer Simulation Server and a PlayMaker Server before running the Soccer Simulation Proxy)
 ```sh
@@ -43,3 +44,11 @@ cd build/bin
 ```powershell
 $env:Path = "C:\msys64\ucrt64\bin;C:\msys64\usr\bin;$env:Path"
 ```
+
+## 发布后执行
+
+发布可以把需要的DLL都集中到软件目录内，便于在其他平台运行
+- Windows发布用`cmake --install build --prefix dist/windows`
+- Linux发布用`cmake --install build --prefix dist/linux`
+
+发布后，可以把`dist/windows/bin`或`dist/linux/bin`取出来，放在别处运行。
