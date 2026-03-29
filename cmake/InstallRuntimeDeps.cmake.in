@@ -2,6 +2,53 @@ set(_install_bin "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin")
 set(_build_bin "@PROJECT_BINARY_DIR@/bin")
 set(_librsc_libdir "@LIBRCSC_LIBDIR@")
 
+function(_collect_runtime_dependencies_windows executables_var out_resolved_var out_unresolved_var)
+  set(_runtime_search_dirs)
+  if(DEFINED ENV{MSYSTEM_PREFIX})
+    list(APPEND _runtime_search_dirs "$ENV{MSYSTEM_PREFIX}/bin")
+  endif()
+  if(DEFINED ENV{MINGW_PREFIX})
+    list(APPEND _runtime_search_dirs "$ENV{MINGW_PREFIX}/bin")
+  endif()
+  if(EXISTS "${_librsc_libdir}")
+    list(APPEND _runtime_search_dirs "${_librsc_libdir}")
+  endif()
+
+  file(GET_RUNTIME_DEPENDENCIES
+    EXECUTABLES ${${executables_var}}
+    RESOLVED_DEPENDENCIES_VAR _resolved_deps_local
+    UNRESOLVED_DEPENDENCIES_VAR _unresolved_deps_local
+    DIRECTORIES ${_runtime_search_dirs}
+    PRE_EXCLUDE_REGEXES
+      "api-ms-win-.*"
+      "ext-ms-.*"
+    POST_EXCLUDE_REGEXES
+      ".*[\\/]Windows[\\/]System32[\\/].*"
+      ".*[\\/]Windows[\\/]WinSxS[\\/].*"
+  )
+
+  list(FILTER _resolved_deps_local INCLUDE REGEX ".*[\\/](ucrt64|mingw64|clang64|clangarm64|clang32)[\\/]bin[\\/].*\\.dll$")
+
+  set(${out_resolved_var} ${_resolved_deps_local} PARENT_SCOPE)
+  set(${out_unresolved_var} ${_unresolved_deps_local} PARENT_SCOPE)
+endfunction()
+
+function(_collect_runtime_dependencies_unix executables_var out_resolved_var out_unresolved_var)
+  file(GET_RUNTIME_DEPENDENCIES
+    EXECUTABLES ${${executables_var}}
+    RESOLVED_DEPENDENCIES_VAR _resolved_deps_local
+    UNRESOLVED_DEPENDENCIES_VAR _unresolved_deps_local
+    POST_EXCLUDE_REGEXES
+      "^/lib/.*"
+      "^/lib64/.*"
+      "^/usr/lib/.*"
+      "^/usr/lib64/.*"
+  )
+
+  set(${out_resolved_var} ${_resolved_deps_local} PARENT_SCOPE)
+  set(${out_unresolved_var} ${_unresolved_deps_local} PARENT_SCOPE)
+endfunction()
+
 set(_exe_suffix "${CMAKE_EXECUTABLE_SUFFIX}")
 if(WIN32 AND _exe_suffix STREQUAL "")
   set(_exe_suffix ".exe")
@@ -29,42 +76,9 @@ if(NOT _existing_executables)
 endif()
 
 if(WIN32)
-  set(_runtime_search_dirs)
-  if(DEFINED ENV{MSYSTEM_PREFIX})
-    list(APPEND _runtime_search_dirs "$ENV{MSYSTEM_PREFIX}/bin")
-  endif()
-  if(DEFINED ENV{MINGW_PREFIX})
-    list(APPEND _runtime_search_dirs "$ENV{MINGW_PREFIX}/bin")
-  endif()
-  if(EXISTS "${_librsc_libdir}")
-    list(APPEND _runtime_search_dirs "${_librsc_libdir}")
-  endif()
-
-  file(GET_RUNTIME_DEPENDENCIES
-    EXECUTABLES ${_existing_executables}
-    RESOLVED_DEPENDENCIES_VAR _resolved_deps
-    UNRESOLVED_DEPENDENCIES_VAR _unresolved_deps
-    DIRECTORIES ${_runtime_search_dirs}
-    PRE_EXCLUDE_REGEXES
-      "api-ms-win-.*"
-      "ext-ms-.*"
-    POST_EXCLUDE_REGEXES
-      ".*[\\/]Windows[\\/]System32[\\/].*"
-      ".*[\\/]Windows[\\/]WinSxS[\\/].*"
-  )
-
-  list(FILTER _resolved_deps INCLUDE REGEX ".*[\\/](ucrt64|mingw64|clang64|clangarm64|clang32)[\\/]bin[\\/].*\\.dll$")
+  _collect_runtime_dependencies_windows(_existing_executables _resolved_deps _unresolved_deps)
 else()
-  file(GET_RUNTIME_DEPENDENCIES
-    EXECUTABLES ${_existing_executables}
-    RESOLVED_DEPENDENCIES_VAR _resolved_deps
-    UNRESOLVED_DEPENDENCIES_VAR _unresolved_deps
-    POST_EXCLUDE_REGEXES
-      "^/lib/.*"
-      "^/lib64/.*"
-      "^/usr/lib/.*"
-      "^/usr/lib64/.*"
-  )
+  _collect_runtime_dependencies_unix(_existing_executables _resolved_deps _unresolved_deps)
 endif()
 
 list(REMOVE_DUPLICATES _resolved_deps)
