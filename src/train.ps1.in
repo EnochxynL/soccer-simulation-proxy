@@ -17,7 +17,7 @@ $dir = $PSScriptRoot
 $player = Join-Path $dir "sample_player.exe"
 $trainer = Join-Path $dir "sample_trainer.exe"
 $teamname = "TRAINER_MODE"
-$host = "localhost"
+$serverAddr = "localhost"
 $rpc_host = "localhost"
 $rpc_port = 50051
 $rpc_port_step = $false
@@ -56,10 +56,10 @@ while ($i -lt $ArgsList.Count) {
             exit 0
         }
         "-h" {
-            $i++; Require-Value $i $arg; $host = $ArgsList[$i]
+            $i++; Require-Value $i $arg; $serverAddr = $ArgsList[$i]
         }
         "--host" {
-            $i++; Require-Value $i $arg; $host = $ArgsList[$i]
+            $i++; Require-Value $i $arg; $serverAddr = $ArgsList[$i]
         }
         "-t" {
             $i++; Require-Value $i $arg; $teamname = $ArgsList[$i]
@@ -101,7 +101,7 @@ if (-not (Test-Path $trainer)) {
 }
 
 $playerOpt = @(
-    "-h", $host,
+    "-h", $serverAddr,
     "-t", $teamname,
     "--player-config", $config,
     "--config_dir", $config_dir,
@@ -111,7 +111,7 @@ $playerOpt = @(
 $playerOpt += $debugopt
 
 $trainerOpt = @(
-    "-h", $host,
+    "-h", $serverAddr,
     "-t", $teamname,
     "--rpc-host", $rpc_host,
     "--rpc-port", $rpc_port,

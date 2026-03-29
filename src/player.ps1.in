@@ -16,7 +16,7 @@ if ($libPath -and $libPath -notmatch "@.+@") {
 $dir = $PSScriptRoot
 $player = Join-Path $dir "sample_player.exe"
 $teamname = "TRAINER_MODE"
-$host = "localhost"
+$serverAddr = "localhost"
 $config = Join-Path $dir "player.conf"
 $config_dir = Join-Path $dir "formations-dt"
 $debugopt = @("--offline_logging", "--debug", "--debug_server_connect")
@@ -45,10 +45,10 @@ while ($i -lt $ArgsList.Count) {
             exit 0
         }
         "-h" {
-            $i++; Require-Value $i $arg; $host = $ArgsList[$i]
+            $i++; Require-Value $i $arg; $serverAddr = $ArgsList[$i]
         }
         "--host" {
-            $i++; Require-Value $i $arg; $host = $ArgsList[$i]
+            $i++; Require-Value $i $arg; $serverAddr = $ArgsList[$i]
         }
         "-t" {
             $i++; Require-Value $i $arg; $teamname = $ArgsList[$i]
@@ -71,7 +71,7 @@ if (-not (Test-Path $player)) {
 }
 
 $opt = @(
-    "-h", $host,
+    "-h", $serverAddr,
     "-t", $teamname,
     "--player-config", $config,
     "--config_dir", $config_dir

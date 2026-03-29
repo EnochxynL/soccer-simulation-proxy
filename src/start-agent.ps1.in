@@ -28,7 +28,7 @@ $dir = $PSScriptRoot
 $player = Join-Path $dir "sample_player.exe"
 $coach = Join-Path $dir "sample_coach.exe"
 $teamname = "SSP"
-$host = "localhost"
+$serverAddr = "localhost"
 $port = 6000
 $rpc_host = "localhost"
 $rpc_port = 50051
@@ -125,7 +125,7 @@ while ($i -lt $ArgsList.Count) {
             $i++; Require-Value $i $arg; $rpc_type = $ArgsList[$i]
         }
         '^(-h|--host)$' {
-            $i++; Require-Value $i $arg; $host = $ArgsList[$i]
+            $i++; Require-Value $i $arg; $serverAddr = $ArgsList[$i]
         }
         '^(-p|--port)$' {
             $i++; Require-Value $i $arg; $port = [int]$ArgsList[$i]
@@ -223,18 +223,18 @@ if ($null -eq $coach_port) {
     $coach_port = $port + 2
 }
 if ([string]::IsNullOrEmpty($debug_server_host)) {
-    $debug_server_host = $host
+    $debug_server_host = $serverAddr
 }
 if ($null -eq $debug_server_port) {
     $debug_server_port = $port + 32
 }
 
-$null = Test-Connection -ComputerName $host -Count 1 -Quiet -ErrorAction SilentlyContinue
+$null = Test-Connection -ComputerName $serverAddr -Count 1 -Quiet -ErrorAction SilentlyContinue
 
 $opt = @(
     "--player-config", $player_conf,
     "--config_dir", $config_dir,
-    "-h", $host,
+    "-h", $serverAddr,
     "-p", $port,
     "-t", $teamname,
     "--debug_server_host", $debug_server_host,
@@ -262,7 +262,7 @@ if ($is_player) {
 if ($is_coach) {
     $coachopt = @(
         "--coach-config", $coach_conf,
-        "-h", $host,
+        "-h", $serverAddr,
         "-p", $coach_port,
         "-t", $teamname,
         "--debug_server_host", $debug_server_host,

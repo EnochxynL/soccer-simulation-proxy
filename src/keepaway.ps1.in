@@ -31,7 +31,7 @@ $trainer = Join-Path $dir "sample_trainer.exe"
 
 $keeper_teamname = "Keeper"
 $taker_teamname = "Taker"
-$host = "localhost"
+$serverAddr = "localhost"
 $port = 6000
 $coach_port = $null
 $debug_server_host = $null
@@ -91,7 +91,7 @@ while ($i -lt $ArgsList.Count) {
             exit 0
         }
         '^(-h|--host)$' {
-            $i++; Require-Value $i $arg; $host = $ArgsList[$i]
+            $i++; Require-Value $i $arg; $serverAddr = $ArgsList[$i]
         }
         '^(-p|--port)$' {
             $i++; Require-Value $i $arg; $port = [int]$ArgsList[$i]
@@ -159,7 +159,7 @@ if ($null -eq $coach_port) {
     $coach_port = $port + 2
 }
 if ([string]::IsNullOrEmpty($debug_server_host)) {
-    $debug_server_host = $host
+    $debug_server_host = $serverAddr
 }
 if ($null -eq $debug_server_port) {
     $debug_server_port = $port + 32
@@ -167,7 +167,7 @@ if ($null -eq $debug_server_port) {
 
 $opt = @(
     "--player-config", $player_conf,
-    "-h", $host,
+    "-h", $serverAddr,
     "-p", $port,
     "--debug_server_host", $debug_server_host,
     "--debug_server_port", $debug_server_port
@@ -201,5 +201,5 @@ if (-not $offline_mode) {
         Write-Error "cannot find executable: $trainer"
         exit 1
     }
-    & $trainer -h $host -t $keeper_teamname --use_ear on
+    & $trainer -h $serverAddr -t $keeper_teamname --use_ear on
 }
