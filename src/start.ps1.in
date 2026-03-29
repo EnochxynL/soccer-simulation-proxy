@@ -53,6 +53,12 @@ $debugopt = @()
 $offline_logging = $false
 $offline_mode = $false
 $fullstateopt = @()
+$agent_seq = 0
+$agent_log_dir = $env:START_TEAM_AGENT_LOG_DIR
+if ([string]::IsNullOrWhiteSpace($agent_log_dir)) {
+    $agent_log_dir = Join-Path $dir "agent-runtime-logs"
+}
+New-Item -ItemType Directory -Path $agent_log_dir -Force | Out-Null
 
 function Show-Usage {
     Write-Output "Usage: $($MyInvocation.MyCommand.Name) [options]"
@@ -100,7 +106,13 @@ function Start-Agent([string]$Exe, [string[]]$ArgList) {
         Write-Error "cannot find executable: $Exe"
         exit 1
     }
-    Start-Process -FilePath $Exe -ArgumentList $ArgList | Out-Null
+    $exe_name = [System.IO.Path]::GetFileNameWithoutExtension($Exe)
+    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss_fff"
+    $base = "$exe_name-$timestamp-$agent_seq"
+    $stdout_log = Join-Path $agent_log_dir "$base.stdout.log"
+    $stderr_log = Join-Path $agent_log_dir "$base.stderr.log"
+    $agent_seq += 1
+    Start-Process -FilePath $Exe -ArgumentList $ArgList -WindowStyle Hidden -RedirectStandardOutput $stdout_log -RedirectStandardError $stderr_log | Out-Null
 }
 
 $i = 0
