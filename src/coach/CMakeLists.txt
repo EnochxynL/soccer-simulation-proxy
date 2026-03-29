@@ -75,3 +75,7 @@ target_link_libraries(sample_coach
   PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
   )
+
+install(TARGETS sample_coach
+  RUNTIME DESTINATION bin
+)

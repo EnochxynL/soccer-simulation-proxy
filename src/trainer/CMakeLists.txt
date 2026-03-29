@@ -78,3 +78,7 @@ set_target_properties(sample_trainer
   PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
   )
+
+install(TARGETS sample_trainer
+        RUNTIME DESTINATION bin
+)

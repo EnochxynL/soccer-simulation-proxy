@@ -178,3 +178,7 @@ set_target_properties(sample_player
   PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
   )
+
+install(TARGETS sample_player
+  RUNTIME DESTINATION bin
+)
