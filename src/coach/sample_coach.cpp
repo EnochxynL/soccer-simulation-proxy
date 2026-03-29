@@ -184,8 +184,9 @@ SampleCoach::initImpl( CmdLineParser & cmd_parser )
     {
         if ( config().teamGraphicFile().empty() )
         {
-            // NOTE: createXpmTiles() not available in this version of librcsc
+            // [x]: createXpmTiles() in https://github.com/helios-base/librcsc/tree/19175f339dcb5c3f61b56a8c1bff5345109f22ef has become fromRawXpm()
             // M_team_graphic.createXpmTiles( team_logo_xpm );
+            M_team_graphic.fromRawXpm( team_logo_xpm );
         }
         else
         {

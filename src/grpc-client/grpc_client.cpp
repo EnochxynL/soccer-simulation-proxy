@@ -183,8 +183,8 @@ void GrpcClient::sendServerParam() const
     serverParam.set_trainer_port(SP.trainerPort());
     serverParam.set_online_coach_port(SP.onlineCoachPort());
     serverParam.set_verbose_mode(SP.verboseMode());
-    // NOTE: coachSendVIStep() not available in this version of librcsc
-    // serverParam.set_coach_send_vi_step(SP.coachSendVIStep());
+    // [x]: coachSendVIStep() in https://github.com/helios-base/librcsc/tree/19175f339dcb5c3f61b56a8c1bff5345109f22ef has become onlineCoachLookStep()
+    serverParam.set_coach_send_vi_step(SP.onlineCoachLookStep());
     serverParam.set_send_comms(SP.sendComms());
     serverParam.set_text_logging(SP.textLogging());
     serverParam.set_game_logging(SP.gameLogging());
