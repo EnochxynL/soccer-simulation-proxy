@@ -1,3 +1,13 @@
+# CLS Proxy for Ubuntu
+
+`sudo apt install libthrift-dev thrift-compiler protobuf-compiler-grpc libgrpc++-dev`
+
+https://stackoverflow.com/questions/56794557/why-there-is-no-precompiled-c-library-for-grpc
+
+https://ubuntu.pkgs.org/24.04/ubuntu-universe-amd64/libgrpc-dev_1.51.1-4.1build5_amd64.deb.html
+https://ubuntu.pkgs.org/22.04/ubuntu-universe-amd64/libgrpc-dev_1.30.2-3build6_amd64.deb.html
+用24.04！
+
 # CLS Proxy for MSYS2-UCRT64
 
 参考自[Wiki](https://github.com/CLSFramework/cross-language-soccer-framework/wiki/Soccer-Simulation-Proxy)
