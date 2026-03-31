@@ -1,6 +1,6 @@
 # CLS Proxy for Ubuntu
 
-`sudo apt install libthrift-dev thrift-compiler protobuf-compiler-grpc libgrpc++-dev`
+`sudo apt install thrift-compiler protobuf-compiler-grpc libgrpc++-dev libthrift-dev`
 
 https://stackoverflow.com/questions/56794557/why-there-is-no-precompiled-c-library-for-grpc
 

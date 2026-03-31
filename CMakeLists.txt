@@ -99,7 +99,7 @@ endif ()
 # sub directories
 if (USE_GRPC)
   add_subdirectory(idl/grpc)
-  find_package(Protobuf CONFIG REQUIRED)
+  find_package(Protobuf REQUIRED)
   if (NOT Protobuf_FOUND)
     message(FATAL_ERROR "Protobuf not found. Please install Protobuf or specify the correct path.")
   endif()
