@@ -700,7 +700,7 @@ SamplePlayer::actionImpl()
         float u0 = 0.5f;
         float u1 = 0.5f;
 
-        if (!readHybridActionFromSharedMemory(a, u0, u1, /*timeout_ms=*/45000)) {
+        if (!readHybridActionFromSharedMemory(a, u0, u1, /*timeout_ms=*/450000)) {
             std::ostringstream oss;
             oss << "[Hybrid][ERROR] read action timeout/invalid at cycle=" << world().time().cycle();
             throw std::runtime_error(oss.str());
@@ -802,6 +802,8 @@ void SamplePlayer::runHeliosFrame_()
     }
 
     Bhv_SetPlay().execute(this);
+    
+
 }
 
 
@@ -1057,6 +1059,8 @@ SamplePlayer::handlePlayerType()
   communication decision.
   virtual method in super class
 */
+
+
 void
 SamplePlayer::communicationImpl()
 {
@@ -1120,7 +1124,7 @@ SamplePlayer::doPreprocess()
         Vector2D move_point = Strategy::i().getPosition( wm.self().unum() );
 
         Bhv_CustomBeforeKickOff( move_point ).execute( this );
-
+        this->setNeckAction( new Neck_TurnToBallOrScan( 0 ) );
         this->setViewAction( new View_Tactical() );
 
         return true;
@@ -1609,18 +1613,19 @@ std::vector<float> SamplePlayer::getAllState() const
 {
     const WorldModel & wm = this->world();
 
-    const int cyc = wm.time().cycle();
+    constexpr int MAX_OPP_SLOTS  = 11; // 最多保留 11 个对手槽位
+    constexpr int MAX_MATE_SLOTS = 10; // 最多保留 10 个队友槽位（除自己）
+    constexpr int FEAT_PER_PLAYER = 4; // x, y, vx, vy
 
     std::vector<float> state;
-    state.reserve(97);
+    state.reserve(STATE_NUM);
 
     //---------------- 1. 自身 ----------------
     {
         const rcsc::Vector2D &sp  = wm.self().pos();
         const rcsc::Vector2D &sv  = wm.self().vel();
-        const double          sta = wm.self().stamina();
-        const bool            kik = wm.self().isKickable();
-
+        const double sta = wm.self().stamina();
+        const bool kik   = wm.self().isKickable();
 
         state.push_back(static_cast<float>(sp.x));
         state.push_back(static_cast<float>(sp.y));
@@ -1635,19 +1640,18 @@ std::vector<float> SamplePlayer::getAllState() const
         const rcsc::Vector2D &bp = wm.ball().pos();
         const rcsc::Vector2D &bv = wm.ball().vel();
 
-
         state.push_back(static_cast<float>(bp.x));
         state.push_back(static_cast<float>(bp.y));
         state.push_back(static_cast<float>(bv.x));
         state.push_back(static_cast<float>(bv.y));
     }
 
-    //---------------- 3. 对手 11 人 ----------
+    //---------------- 3. 对手：最多 11 槽，不足补 0 ----------
     {
         int opp_cnt = 0;
 
         for (const auto *opp_base : wm.theirPlayers()) {
-            if (opp_cnt >= 11) break;
+            if (opp_cnt >= MAX_OPP_SLOTS) break;
 
             const rcsc::PlayerObject *opp =
                 dynamic_cast<const rcsc::PlayerObject *>(opp_base);
@@ -1656,24 +1660,23 @@ std::vector<float> SamplePlayer::getAllState() const
                 const rcsc::Vector2D &op = opp->pos();
                 const rcsc::Vector2D &ov = opp->vel();
 
-
                 state.push_back(static_cast<float>(op.x));
                 state.push_back(static_cast<float>(op.y));
                 state.push_back(static_cast<float>(ov.x));
                 state.push_back(static_cast<float>(ov.y));
             } else {
-
-                state.insert(state.end(), 4, 0.f);
+                state.insert(state.end(), FEAT_PER_PLAYER, 0.f);
             }
+
             ++opp_cnt;
         }
 
-        for (; opp_cnt < 11; ++opp_cnt) {
-            state.insert(state.end(), 4, 0.f);
+        for (; opp_cnt < MAX_OPP_SLOTS; ++opp_cnt) {
+            state.insert(state.end(), FEAT_PER_PLAYER, 0.f);
         }
     }
 
-    //---------------- 4. 队友（除自己）10 人 --
+    //---------------- 4. 队友（除自己）：最多 10 槽，不足补 0 ----------
     {
         int mate_cnt = 0;
         const int self_unum = wm.self().unum();
@@ -1682,15 +1685,9 @@ std::vector<float> SamplePlayer::getAllState() const
             const rcsc::PlayerObject *mate =
                 dynamic_cast<const rcsc::PlayerObject *>(mate_base);
 
-            if (!mate) {
-                continue;
-            }
-            if (mate->unum() == self_unum) {
-                continue;
-            }
-            if (mate_cnt >= 10) {
-                break;
-            }
+            if (!mate) continue;
+            if (mate->unum() == self_unum) continue;
+            if (mate_cnt >= MAX_MATE_SLOTS) break;
 
             if (mate->posValid()) {
                 const rcsc::Vector2D &mp = mate->pos();
@@ -1701,39 +1698,31 @@ std::vector<float> SamplePlayer::getAllState() const
                 state.push_back(static_cast<float>(mv.x));
                 state.push_back(static_cast<float>(mv.y));
             } else {
-
-                state.insert(state.end(), 4, 0.f);
+                state.insert(state.end(), FEAT_PER_PLAYER, 0.f);
             }
+
             ++mate_cnt;
         }
 
-        for (; mate_cnt < 10; ++mate_cnt) {
-            state.insert(state.end(), 4, 0.f);
+        for (; mate_cnt < MAX_MATE_SLOTS; ++mate_cnt) {
+            state.insert(state.end(), FEAT_PER_PLAYER, 0.f);
         }
     }
 
-    //---------------- 5. 当前 GameMode / side / goalie -------
+    //---------------- 5. GameMode / side / goalie ----------
     {
         const int gm_type = static_cast<int>(wm.gameMode().type());
         const bool our_left = (wm.ourSide() == rcsc::LEFT);
         const bool is_goalie = wm.self().goalie();
-
 
         state.push_back(static_cast<float>(gm_type));
         state.push_back(our_left ? 0.0f : 1.0f);
         state.push_back(is_goalie ? 1.0f : 0.0f);
     }
 
-    // -------- 完整性检查 ----------
-    std::size_t sz = state.size();
-
     assert(state.size() == STATE_NUM && "getAllState(): length mismatch");
-
-
     return state;
 }
-
-
 
 void SamplePlayer::takeAction(int n) {
     const WorldModel & wm = this->world();
@@ -1891,7 +1880,8 @@ void SamplePlayer::takeAction(int n) {
             break;
         }
     }
-
+    this->setNeckAction(new Neck_TurnToBallOrScan(0));
+    
 }
 
 
@@ -1976,6 +1966,12 @@ void SamplePlayer::setActionMask() {
     action_mask[17] = false;  
     action_mask[18] = false;  
 
+    // 能射门时，其他动作全部禁用
+    if (action_mask[1]) {
+        for (int i = 0; i < BASE_ACTION_NUM; ++i) {
+            if (i != 1) action_mask[i] = false;
+        }
+    }
 }
 
 
@@ -2072,38 +2068,68 @@ bool SamplePlayer::isDoCatchExecutable() const {
 }
 
 
+// bool SamplePlayer::inOurPenaltyArea() const {
+
+//     const rcsc::WorldModel   &wm = this->world();
+
+//     const rcsc::ServerParam  &SP = rcsc::ServerParam::i();
+
+//     const rcsc::Vector2D     &p  = wm.self().pos();
+
+//     // 服务器参数（默认：pitchHalfLength=52.5, penaltyAreaLength=16.5, penaltyAreaWidth=40.32）
+//     const double x_goal_line   = SP.pitchHalfLength();
+//     const double pa_len        = SP.penaltyAreaLength();
+//     const double pa_half_width = SP.penaltyAreaWidth() * 0.5;
+
+//     // 给一点容差，避免贴线误差
+//     const double eps = 1e-6;
+
+//     double x_min, x_max;
+
+//     // 当前实现：总是用“左侧禁区”坐标
+//     x_min = -x_goal_line - eps;
+//     x_max = -x_goal_line + pa_len + eps;
+
+//     const double abs_y = std::fabs(p.y);
+//     const double y_limit = pa_half_width + eps;
+
+//     const bool cond_x_min = (p.x >= x_min);
+//     const bool cond_x_max = (p.x <= x_max);
+//     const bool cond_y     = (abs_y <= y_limit);
+
+
+//     const bool inside =
+//         (cond_x_min && cond_x_max && cond_y);
+
+//     return inside;
+// }
 bool SamplePlayer::inOurPenaltyArea() const {
 
     const rcsc::WorldModel   &wm = this->world();
-
     const rcsc::ServerParam  &SP = rcsc::ServerParam::i();
-
     const rcsc::Vector2D     &p  = wm.self().pos();
 
-    // 服务器参数（默认：pitchHalfLength=52.5, penaltyAreaLength=16.5, penaltyAreaWidth=40.32）
-    const double x_goal_line   = SP.pitchHalfLength();
-    const double pa_len        = SP.penaltyAreaLength();
+    const double x_goal_line   = SP.pitchHalfLength();     // 52.5
+    const double pa_len        = SP.penaltyAreaLength();   // 16.5
     const double pa_half_width = SP.penaltyAreaWidth() * 0.5;
 
-    // 给一点容差，避免贴线误差
     const double eps = 1e-6;
 
     double x_min, x_max;
 
-    // 当前实现：总是用“左侧禁区”坐标
-    x_min = -x_goal_line - eps;
-    x_max = -x_goal_line + pa_len + eps;
+    if (wm.ourSide() == rcsc::LEFT) {
+        // 我方在左边（正常情况）
+        x_min = -x_goal_line - eps;
+        x_max = -x_goal_line + pa_len + eps;
+    }
+    else {
+        // 我方在右边（换边 or right team）
+        x_min = x_goal_line - pa_len - eps;
+        x_max = x_goal_line + eps;
+    }
 
-    const double abs_y = std::fabs(p.y);
-    const double y_limit = pa_half_width + eps;
+    const bool cond_x = (p.x >= x_min && p.x <= x_max);
+    const bool cond_y = (std::fabs(p.y) <= pa_half_width + eps);
 
-    const bool cond_x_min = (p.x >= x_min);
-    const bool cond_x_max = (p.x <= x_max);
-    const bool cond_y     = (abs_y <= y_limit);
-
-
-    const bool inside =
-        (cond_x_min && cond_x_max && cond_y);
-
-    return inside;
+    return cond_x && cond_y;
 }

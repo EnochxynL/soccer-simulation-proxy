@@ -343,7 +343,6 @@ bool SampleCoach::initImpl( rcsc::CmdLineParser & cmd_parser )
 
 #include <iomanip>  // 👈 加上这一行
 #include <iomanip>  // 确保有这一行
-
 void SampleCoach::writeSharedMemory()
 {
     if (!shm_ptr_) {
@@ -351,12 +350,6 @@ void SampleCoach::writeSharedMemory()
     }
 
     auto* base = static_cast<std::uint8_t*>(shm_ptr_);
-
-    // 布局保持不变：
-    // flag   : +0 (uint8)
-    // cycle  : +1 (int32)   -> 注意这里是“非对齐地址”，必须 memcpy
-    // floats : +5 (136 * float)
-    // mode   : + (1 + 4 + 136*4) = +549 (int32) -> 同样可能非对齐，必须 memcpy
 
     constexpr std::size_t OFF_FLAG  = 0;
     constexpr std::size_t OFF_CYCLE = 1;
@@ -384,15 +377,14 @@ void SampleCoach::writeSharedMemory()
     const std::int32_t cur_cycle = static_cast<std::int32_t>(world().time().cycle());
     wr_i32(OFF_CYCLE, cur_cycle);
 
-    // 2) 写 float 区：从 +5 开始，顺序保持和你原来完全一致
-    std::size_t k = 0; // float index [0, NFLOATS)
+    // 2) float 区
+    std::size_t k = 0;
 
     auto push_f = [&](float v) {
         if (k < NFLOATS) {
             wr_f32(OFF_FLOAT + k * sizeof(float), v);
             ++k;
         }
-        // 若 k 超了，说明 NFLOATS/布局定义不匹配；这里选择静默忽略，避免越界写
     };
 
     // ===== 球 =====
@@ -401,10 +393,7 @@ void SampleCoach::writeSharedMemory()
     push_f(static_cast<float>(world().ball().vel().x));
     push_f(static_cast<float>(world().ball().vel().y));
 
-    // ===== 球员 =====
-    int n_team = static_cast<int>(world().teammates().size());
-    int n_opp  = static_cast<int>(world().opponents().size());
-
+    // ===== 球员：按 unum 排序写入 =====
     auto dump_player = [&](const rcsc::CoachPlayerObject* p, int team) {
         const float x   = p ? static_cast<float>(p->pos().x)         : 0.f;
         const float y   = p ? static_cast<float>(p->pos().y)         : 0.f;
@@ -420,42 +409,46 @@ void SampleCoach::writeSharedMemory()
         push_f(static_cast<float>(team));
     };
 
-    // 我方：最多 11
-    for (const auto& t : world().teammates()) {
-        dump_player(t, 0);
-        if (--n_team <= 0) break;
-    }
-    // 不足补 0 到 11 人
-    for (int i = static_cast<int>(world().teammates().size()); i < 11; ++i) {
-        dump_player(nullptr, 0);
-    }
-
-    // 对方：最多 11
-    for (const auto& o : world().opponents()) {
-        dump_player(o, 1);
-        if (--n_opp <= 0) break;
-    }
-    // 不足补 0 到 11 人
-    for (int i = static_cast<int>(world().opponents().size()); i < 11; ++i) {
-        dump_player(nullptr, 1);
+    // 我方：按 unum=1..11 顺序写入，不存在则补 nullptr
+    {
+        std::vector<const rcsc::CoachPlayerObject*> team_sorted(11, nullptr);
+        for (const auto& t : world().teammates()) {
+            if (t && t->unum() >= 1 && t->unum() <= 11) {
+                team_sorted[t->unum() - 1] = t;
+            }
+        }
+        for (int i = 0; i < 11; ++i) {
+            dump_player(team_sorted[i], 0);
+        }
     }
 
-    // 如果还没写满 136 floats（例如未来字段调整），剩余填 0，避免 Python 读到旧数据
+    // 对方：按 unum=1..11 顺序写入，不存在则补 nullptr
+    {
+        std::vector<const rcsc::CoachPlayerObject*> opp_sorted(11, nullptr);
+        for (const auto& o : world().opponents()) {
+            if (o && o->unum() >= 1 && o->unum() <= 11) {
+                opp_sorted[o->unum() - 1] = o;
+            }
+        }
+        for (int i = 0; i < 11; ++i) {
+            dump_player(opp_sorted[i], 1);
+        }
+    }
+
+    // 剩余填 0
     while (k < NFLOATS) {
         push_f(0.f);
     }
 
-    // 3) mode (GameMode type) @ +549
+    // 3) game mode
     const std::int32_t gm_type = static_cast<std::int32_t>(world().gameMode().type());
     wr_i32(OFF_MODE, gm_type);
 
-    // ✅ goal_flag（闩锁：只有 slot==0 才写入，直到 Python 清零）
-    // 约定：+1 = 左队进球；-1 = 右队进球；0 = 无事件/已清零
+    // 4) goal flag（闩锁）
     const std::int32_t slot = rd_i32(OFF_GOAL);
     if (slot == 0) {
         const rcsc::GameMode &gm = world().gameMode();
         if (gm.type() == rcsc::GameMode::AfterGoal_) {
-            // SideID 的枚举名以你 rcsc/types.h 为准；常见是 LEFT/RIGHT
             const rcsc::SideID s = gm.side();
             if (s == rcsc::LEFT) {
                 wr_i32(OFF_GOAL, +1);
@@ -465,14 +458,9 @@ void SampleCoach::writeSharedMemory()
         }
     }
 
-    // 4) flag = 1 通知 Python
+    // 5) flag = 1 通知 Python
     wr_u8(OFF_FLAG, static_cast<std::uint8_t>(1));
 }
-
-/*-------------------------------------------------------------------*/
-/*!
-
-*/
 
 void
 SampleCoach::actionImpl()
