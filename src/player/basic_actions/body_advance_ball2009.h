@@ -61,6 +61,7 @@ public:
       \return true if action is performed
      */
     bool execute( rcsc::PlayerAgent * agent );
+    bool isExecutable( rcsc::PlayerAgent * agent );
 
 private:
 

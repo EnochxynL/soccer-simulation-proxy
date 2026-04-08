@@ -37,10 +37,13 @@
 
 #include <functional>
 #include <vector>
+#include <algorithm>
 
 namespace rcsc {
 class WorldModel;
 class PlayerObject;
+class AngleDeg;
+class PlayerAgent;
 }
 
 /*!
@@ -59,6 +62,12 @@ public:
         LEAD    = 2,
         THROUGH = 3
     };
+    bool DirectPass(rcsc::PlayerAgent * agent);
+    bool LeadPass(rcsc::PlayerAgent * agent);
+    bool ThroughPass(rcsc::PlayerAgent * agent);
+    bool isDirectPassExecutable(rcsc::PlayerAgent * agent);
+    bool isLeadPassExecutable(rcsc::PlayerAgent * agent);
+    bool isThroughPassExecutable(rcsc::PlayerAgent * agent);
 
     /*!
       \struct PassRoute
@@ -99,7 +108,15 @@ private:
 
     //! cached calculated pass data
     static std::vector< PassRoute > S_cached_pass_route;
-
+    //! cached direct-pass routes (new)
+    static std::vector<PassRoute> S_cached_direct_routes;
+    //! cached lead-pass routes (new)
+    static std::vector<PassRoute> S_cached_lead_routes;
+    //! cached through-pass routes (new)
+    static std::vector<PassRoute> S_cached_through_routes;
+    // 可选容器版本的评分（方式 A：直接传容器引用）
+    static void evaluate_routes_on( const rcsc::WorldModel & world,
+                                    std::vector< PassRoute > & routes);
 
 public:
     /*!
@@ -114,8 +131,22 @@ public:
       \return true if action is performed
     */
     bool execute( rcsc::PlayerAgent * agent );
-
+    bool isExecutable( rcsc::PlayerAgent * agent );
+    // bool isDirectPassExecutable( rcsc::PlayerAgent * agent );
+    // bool DirectPass( rcsc::PlayerAgent * agent );
+    // bool isLeadPassExecutable( rcsc::PlayerAgent * agent );
+    // bool LeadPass( rcsc::PlayerAgent * agent );
+    // bool isThroughPassExecutable( rcsc::PlayerAgent * agent );
+    // bool ThroughPass( rcsc::PlayerAgent * agent );
+    static bool get_best_direct(const rcsc::WorldModel& world,
+                            rcsc::Vector2D* tp, double* fs, int* recv);
+    static bool get_best_lead(const rcsc::WorldModel& world,
+                          rcsc::Vector2D* tp, double* fs, int* recv);
+    static bool get_best_through(const rcsc::WorldModel& world,
+                             rcsc::Vector2D* tp, double* fs, int* recv);
     /*!
+
+
       \brief calculate best pass route
       \param world consr rerefence to the WorldModel
       \param target_point receive target point is stored to this
@@ -128,6 +159,16 @@ public:
                         rcsc::Vector2D * target_point,
                         double * first_speed,
                         int * receiver );
+    
+    // 只生成 Direct 路线（并评分后缓存到 S_cached_direct_routes）
+    static void create_routes_direct_only( const rcsc::WorldModel & world );
+
+    // 只生成 Lead 路线（并评分后缓存到 S_cached_lead_routes）
+    static void create_routes_lead_only( const rcsc::WorldModel & world );
+
+    // 只生成 Through 路线（并评分后缓存到 S_cached_through_routes）
+    static void create_routes_through_only( const rcsc::WorldModel & world );
+
 
 private:
     static
@@ -135,13 +176,18 @@ private:
 
     static
     void create_direct_pass( const rcsc::WorldModel & world,
-                             const rcsc::PlayerObject * teammates );
+                            const rcsc::PlayerObject * teammates,
+                            std::vector< PassRoute > & out );
+
     static
     void create_lead_pass( const rcsc::WorldModel & world,
-                           const rcsc::PlayerObject * teammates );
+                          const rcsc::PlayerObject * teammates,
+                          std::vector< PassRoute > & out );
+
     static
     void create_through_pass( const rcsc::WorldModel & world,
-                              const rcsc::PlayerObject * teammates );
+                              const rcsc::PlayerObject * teammates,
+                              std::vector< PassRoute > & out );
 
     static
     bool verify_direct_pass( const rcsc::WorldModel & world,

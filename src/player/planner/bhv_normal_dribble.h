@@ -71,6 +71,7 @@ public:
       \return true with action, false if can't do dribble
      */
     bool execute( rcsc::PlayerAgent * agent );
+    bool isExecutable( rcsc::PlayerAgent * agent );
 };
 
 #endif

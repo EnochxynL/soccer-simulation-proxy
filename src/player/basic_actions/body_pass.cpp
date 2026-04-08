@@ -54,32 +54,134 @@
 #include <rcsc/geom/sector_2d.h>
 #include <rcsc/soccer_math.h>
 #include <rcsc/math_util.h>
-
+#include <iostream>
+#include <cstdlib>
 using namespace rcsc;
 
 //#define DEBUG
 
 std::vector< Body_Pass::PassRoute > Body_Pass::S_cached_pass_route;
+// 新增的三个定义：
+std::vector<Body_Pass::PassRoute> Body_Pass::S_cached_direct_routes;
+std::vector<Body_Pass::PassRoute> Body_Pass::S_cached_lead_routes;
+std::vector<Body_Pass::PassRoute> Body_Pass::S_cached_through_routes;
+
+namespace {
+inline bool pick_best_from(const std::vector<Body_Pass::PassRoute>& routes,
+                           rcsc::Vector2D* target_point,
+                           double* first_speed,
+                           int* receiver,
+                           const Body_Pass::PassRoute** best_out = nullptr)
+{
+    if (routes.empty()) return false;
+    auto it = std::max_element(routes.begin(), routes.end(),
+                               [](const Body_Pass::PassRoute& a, const Body_Pass::PassRoute& b){
+                                   return a.score_ < b.score_;
+                               });
+    if (target_point) *target_point = it->receive_point_;
+    if (first_speed)  *first_speed  = it->first_speed_;
+    if (receiver)     *receiver     = it->receiver_ ? it->receiver_->unum() : Unum_Unknown;
+    if (best_out)     *best_out     = &(*it);
+    return true;
+}
+} // namespace
 
 /*-------------------------------------------------------------------*/
 /*!
   execute action
-*/
+// */
+// bool
+// Body_Pass::execute( PlayerAgent * agent )
+// {
+//     dlog.addText( Logger::ACTION,
+//                   "%s:%d: Body_Pass. execute()"
+//                   ,__FILE__, __LINE__ );
+
+//     if ( ! agent->world().self().isKickable() )
+//     {
+//         std::cerr << __FILE__ << ": " << __LINE__
+//                   << " not ball kickable!"
+//                   << std::endl;
+//         dlog.addText( Logger::ACTION,
+//                       "%s:%d:  not kickable"
+//                       ,__FILE__, __LINE__ );
+//         return false;
+//     }
+
+//     Vector2D target_point(50.0, 0.0);
+//     double first_speed = 0.0;
+//     int receiver = 0;
+
+//     if ( ! get_best_pass( agent->world(), &target_point, &first_speed, &receiver ) )
+//     {
+//         return false;
+//     }
+
+
+//     // evaluation
+//     //   judge situation
+//     //   decide max kick step
+//     //
+
+//     agent->debugClient().addMessage( "pass" );
+//     agent->debugClient().setTarget( target_point );
+
+//     int kick_step = ( agent->world().gameMode().type() != GameMode::PlayOn
+//                       && agent->world().gameMode().type() != GameMode::GoalKick_
+//                       ? 1
+//                       : 3 );
+//     if ( ! Body_SmartKick( target_point,
+//                            first_speed,
+//                            first_speed * 0.96,
+//                            kick_step ).execute( agent ) )
+//     {
+//         if ( agent->world().gameMode().type() != GameMode::PlayOn
+//              && agent->world().gameMode().type() != GameMode::GoalKick_ )
+//         {
+//             first_speed = std::min( agent->world().self().kickRate() * ServerParam::i().maxPower(),
+//                                     first_speed );
+//             Body_KickOneStep( target_point,
+//                               first_speed
+//                               ).execute( agent );
+//             dlog.addText( Logger::ACTION,
+//                           __FILE__": execute() one step kick" );
+//         }
+//         else
+//         {
+//             dlog.addText( Logger::ACTION,
+//                           __FILE__": execute() failed to pass kick." );
+//             return false;
+//         }
+//     }
+
+//     if ( agent->config().useCommunication()
+//          && receiver != Unum_Unknown )
+//     {
+//         dlog.addText( Logger::ACTION,
+//                       __FILE__": execute() set pass communication." );
+//         Vector2D target_buf = target_point - agent->world().self().pos();
+//         target_buf.setLength( 1.0 );
+
+//         agent->addSayMessage( new PassMessage( receiver,
+//                                                target_point + target_buf,
+//                                                agent->effector().queuedNextBallPos(),
+//                                                agent->effector().queuedNextBallVel() ) );
+//     }
+
+//     return true;
+// }
+
+
 bool
 Body_Pass::execute( PlayerAgent * agent )
 {
-    dlog.addText( Logger::ACTION,
-                  "%s:%d: Body_Pass. execute()"
-                  ,__FILE__, __LINE__ );
+    //1024
+    std::cerr << "[HIT] Body_Pass::execute()" << std::endl;
+    std::abort();  // 一旦调用就崩，堆栈一目了然
+    return false;
 
-    if ( ! agent->world().self().isKickable() )
+    if ( ! agent->world().self().isKickable() ) //kickable
     {
-        std::cerr << __FILE__ << ": " << __LINE__
-                  << " not ball kickable!"
-                  << std::endl;
-        dlog.addText( Logger::ACTION,
-                      "%s:%d:  not kickable"
-                      ,__FILE__, __LINE__ );
         return false;
     }
 
@@ -146,10 +248,72 @@ Body_Pass::execute( PlayerAgent * agent )
     return true;
 }
 
+bool
+Body_Pass::isExecutable( PlayerAgent * agent )
+{
+
+    if ( ! agent->world().self().isKickable() )
+    {
+        return false;
+    }
+
+    Vector2D target_point(50.0, 0.0);
+    double first_speed = 0.0;
+    int receiver = 0;
+
+    if ( ! get_best_pass( agent->world(), &target_point, &first_speed, &receiver ) )
+    {
+        return false;
+    }
+
+    int kick_step = ( agent->world().gameMode().type() != GameMode::PlayOn
+                      && agent->world().gameMode().type() != GameMode::GoalKick_
+                      ? 1
+                      : 3 );
+    if ( ! Body_SmartKick( target_point,
+                           first_speed,
+                           first_speed * 0.96,
+                           kick_step ).isExecutable( agent ) )
+    {
+        if ( agent->world().gameMode().type() != GameMode::PlayOn
+             && agent->world().gameMode().type() != GameMode::GoalKick_ )
+        {
+
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
 /*-------------------------------------------------------------------*/
 /*!
   static method
 */
+bool Body_Pass::get_best_direct(const WorldModel& world,
+                                Vector2D* tp, double* fs, int* recv)
+{
+    create_routes_direct_only(world);                 // 填充 S_cached_direct_routes 并打分
+    return pick_best_from(S_cached_direct_routes, tp, fs, recv);
+}
+
+bool Body_Pass::get_best_lead(const WorldModel& world,
+                              Vector2D* tp, double* fs, int* recv)
+{
+    create_routes_lead_only(world);
+    return pick_best_from(S_cached_lead_routes, tp, fs, recv);
+}
+
+bool Body_Pass::get_best_through(const WorldModel& world,
+                                 Vector2D* tp, double* fs, int* recv)
+{
+    create_routes_through_only(world);
+    return pick_best_from(S_cached_through_routes, tp, fs, recv);
+}
+
+
 bool
 Body_Pass::get_best_pass( const WorldModel & world,
                           Vector2D * target_point,
@@ -242,6 +406,69 @@ Body_Pass::get_best_pass( const WorldModel & world,
   static method
 */
 void
+Body_Pass::create_routes_direct_only( const WorldModel & world )
+{
+    S_cached_direct_routes.clear();
+
+    for ( const PlayerObject * t : world.teammatesFromSelf() )
+    {
+        if ( !t ) continue;
+        if ( t->goalie() && t->pos().x < -22.0 ) continue;
+        if ( t->posCount() > 3 ) continue;
+        if ( t->pos().x > world.offsideLineX() + 1.0 ) continue;
+        if ( t->pos().x < world.ball().pos().x - 25.0 ) continue;
+
+        // 只生成 direct 候选到 direct 缓存
+        create_direct_pass( world, t, S_cached_direct_routes );
+    }
+
+    evaluate_routes_on( world, S_cached_direct_routes );
+}
+
+void
+Body_Pass::create_routes_lead_only( const WorldModel & world )
+{
+    S_cached_lead_routes.clear();
+
+    for ( const PlayerObject * t : world.teammatesFromSelf() )
+    {
+        if ( !t ) continue;
+        if ( t->goalie() && t->pos().x < -22.0 ) continue;
+        if ( t->posCount() > 3 ) continue;
+        if ( t->pos().x > world.offsideLineX() + 1.0 ) continue;
+        if ( t->pos().x < world.ball().pos().x - 25.0 ) continue;
+
+        create_lead_pass( world, t, S_cached_lead_routes );
+    }
+
+    evaluate_routes_on( world, S_cached_lead_routes );
+}
+
+void
+Body_Pass::create_routes_through_only( const WorldModel & world )
+{
+    S_cached_through_routes.clear();
+
+    for ( const PlayerObject * t : world.teammatesFromSelf() )
+    {
+        if ( !t ) continue;
+        if ( t->goalie() && t->pos().x < -22.0 ) continue;
+        if ( t->posCount() > 3 ) continue;
+        if ( t->pos().x > world.offsideLineX() + 1.0 ) continue;
+        if ( t->pos().x < world.ball().pos().x - 25.0 ) continue;
+
+        // 与原 create_routes 一致：接近越位线才考虑 through
+        if ( world.self().pos().x > world.offsideLineX() - 20.0 )
+        {
+            create_through_pass( world, t, S_cached_through_routes );
+        }
+    }
+
+    evaluate_routes_on( world, S_cached_through_routes );
+}
+
+
+void
 Body_Pass::create_routes( const WorldModel & world )
 {
     // reset old info
@@ -272,11 +499,11 @@ Body_Pass::create_routes( const WorldModel & world )
         }
 
         // create & verify each route
-        create_direct_pass( world, t );
-        create_lead_pass( world, t );
+        create_direct_pass( world, t , S_cached_pass_route);
+        create_lead_pass( world, t , S_cached_pass_route);
         if ( world.self().pos().x > world.offsideLineX() - 20.0 )
         {
-            create_through_pass( world, t );
+            create_through_pass( world, t , S_cached_pass_route);
         }
     }
 
@@ -291,7 +518,8 @@ Body_Pass::create_routes( const WorldModel & world )
 */
 void
 Body_Pass::create_direct_pass( const WorldModel & world,
-                               const PlayerObject * receiver )
+                               const PlayerObject * receiver,
+                               std::vector<PassRoute> & out )
 {
     static const double MAX_DIRECT_PASS_DIST
         = 0.8 * inertia_final_distance( ServerParam::i().ballSpeedMax(),
@@ -451,7 +679,7 @@ Body_Pass::create_direct_pass( const WorldModel & world,
                              receiver_angle,
                              first_speed ) )
     {
-        S_cached_pass_route.emplace_back( DIRECT,
+        out.emplace_back( DIRECT,
                                           receiver,
                                           base_player_pos,
                                           first_speed,
@@ -478,7 +706,7 @@ Body_Pass::create_direct_pass( const WorldModel & world,
                              angle_new,
                              first_speed ) )
     {
-        S_cached_pass_route.emplace_back( DIRECT,
+        out.emplace_back( DIRECT,
                                           receiver,
                                           target_new,
                                           first_speed,
@@ -499,7 +727,7 @@ Body_Pass::create_direct_pass( const WorldModel & world,
                              angle_new,
                              first_speed ) )
     {
-        S_cached_pass_route.emplace_back( DIRECT,
+        out.emplace_back( DIRECT,
                                           receiver,
                                           target_new,
                                           first_speed,
@@ -532,7 +760,8 @@ Body_Pass::create_direct_pass( const WorldModel & world,
 */
 void
 Body_Pass::create_lead_pass( const WorldModel & world,
-                             const PlayerObject * receiver )
+                             const PlayerObject * receiver,
+                             std::vector<PassRoute> & out )
 {
     static const double MAX_LEAD_PASS_DIST
         = 0.7 * inertia_final_distance( ServerParam::i().ballSpeedMax(),
@@ -746,7 +975,7 @@ Body_Pass::create_lead_pass( const WorldModel & world,
                                       first_speed,
                                       ball_steps_to_target ) )
             {
-                S_cached_pass_route.emplace_back( LEAD,
+                out.emplace_back( LEAD,
                                                   receiver,
                                                   target_point,
                                                   first_speed,
@@ -784,7 +1013,8 @@ Body_Pass::create_lead_pass( const WorldModel & world,
 */
 void
 Body_Pass::create_through_pass(const WorldModel & world,
-                               const PlayerObject * receiver)
+                               const PlayerObject * receiver,
+                               std::vector<PassRoute> & out)
 {
     static const double MAX_THROUGH_PASS_DIST
         = 0.9 * inertia_final_distance( ServerParam::i().ballSpeedMax(),
@@ -977,7 +1207,7 @@ Body_Pass::create_through_pass(const WorldModel & world,
                                       first_speed,
                                       ball_steps_to_target ) )
             {
-                S_cached_pass_route.emplace_back( THROUGH,
+                out.emplace_back( THROUGH,
                                                   receiver,
                                                   target_point,
                                                   first_speed,
@@ -1359,6 +1589,97 @@ Body_Pass::evaluate_routes( const WorldModel & world )
 
 }
 
+
+void
+Body_Pass::evaluate_routes_on( const WorldModel & world, std::vector< PassRoute > & routes)
+{
+    const AngleDeg min_angle = -45.0;
+    const AngleDeg max_angle = 45.0;
+
+    for ( auto it = routes.begin(), end = routes.end();
+          it != end;
+          ++it )
+    {
+        //-----------------------------------------------------------
+        double opp_dist_rate = 1.0;
+        {
+            double opp_dist = 100.0;
+            world.getOpponentNearestTo( it->receive_point_, 20, &opp_dist );
+            opp_dist_rate = std::pow( 0.99, std::max( 0.0, 30.0 - opp_dist ) );
+        }
+        //-----------------------------------------------------------
+        double x_diff_rate = 1.0;
+        {
+            double x_diff = it->receive_point_.x - world.self().pos().x;
+            x_diff_rate = std::pow( 0.98, std::max( 0.0, 30.0 - x_diff ) );
+        }
+        //-----------------------------------------------------------
+        double receiver_move_rate = 1.0;
+        //= std::pow( 0.995,
+        //it->receiver_->pos().dist( it->receive_point_ ) );
+        //-----------------------------------------------------------
+        double pos_conf_rate = std::pow( 0.98, it->receiver_->posCount() );
+        //-----------------------------------------------------------
+        double dir_conf_rate = 1.0;
+        {
+            AngleDeg pass_angle = ( it->receive_point_ - world.self().pos() ).th();
+            int max_count = 0;
+            world.dirRangeCount( pass_angle, 20.0, &max_count, NULL, NULL );
+
+            dir_conf_rate = std::pow( 0.95, max_count );
+        }
+        //-----------------------------------------------------------
+        double offense_rate
+            = std::pow( 0.98,
+                        std::max( 5.0, std::fabs( it->receive_point_.y
+                                                  - world.ball().pos().y ) ) );
+        //-----------------------------------------------------------
+        const Sector2D sector( it->receive_point_,
+                               0.0, 10.0,
+                               min_angle, max_angle );
+
+        // opponent check with goalie
+        double front_space_rate = 1.0;
+        if ( world.existOpponentIn( sector, 10, true ) )
+        {
+            front_space_rate = 0.95;
+        }
+
+        //-----------------------------------------------------------
+        it->score_ = 1000.0;
+        it->score_ *= opp_dist_rate;
+        it->score_ *= x_diff_rate;
+        it->score_ *= receiver_move_rate;
+        it->score_ *= pos_conf_rate;
+        it->score_ *= dir_conf_rate;
+        it->score_ *= offense_rate;
+        it->score_ *= front_space_rate;
+
+        if (! it->one_step_kick_ )
+        {
+            it->score_ *= 0.0;
+        }
+
+#ifdef DEBUG
+        dlog.addText( Logger::PASS,
+                      "PASS Score %6.2f -- to%d(%.1f %.1f) recv_pos(%.1f %.1f) type %d "
+                      " speed=%.2f",
+                      it->score_,
+                      it->receiver_->unum(),
+                      it->receiver_->pos().x, it->receiver_->pos().y,
+                      it->receive_point_.x, it->receive_point_.y,
+                      it->type_,
+                      it->first_speed_ );
+        dlog.addText( Logger::PASS,
+                      "____ opp_dist=%.2f x_diff=%.2f pos_conf=%.2f"
+                      " dir_conf=%.2f space=%.1f %s",
+                      opp_dist_rate, x_diff_rate, pos_conf_rate,
+                      dir_conf_rate, front_space_rate,
+                      ( it->one_step_kick_ ? "one_step" : "" ) );
+#endif
+    }
+
+}
 /*-------------------------------------------------------------------*/
 /*!
   static method
@@ -1372,4 +1693,126 @@ Body_Pass::can_kick_by_one_step( const WorldModel & world,
     required_accel -= world.ball().vel();
     return ( world.self().kickRate() * ServerParam::i().maxPower()
              > required_accel.r() );
+}
+
+bool Body_Pass::DirectPass(PlayerAgent* agent)
+{
+    if (!agent->world().self().isKickable()) return false;
+
+    Vector2D tp; double fs = 0.0; int recv = Unum_Unknown;
+    if (!get_best_direct(agent->world(), &tp, &fs, &recv)) return false;
+
+    agent->debugClient().addMessage("pass:direct-1step");
+    agent->debugClient().setTarget(tp);
+
+    // 一脚能打到的最大“有效初速”上限（与你原 fallback 一致）
+    fs = std::min(fs, agent->world().self().kickRate() * ServerParam::i().maxPower());
+
+    // 直接一脚踢。如果一脚达不到目标初速，execute 会返回 false
+    if (!Body_KickOneStep(tp, fs).execute(agent)) {
+        return false;
+    }
+
+    if (agent->config().useCommunication() && recv != Unum_Unknown) {
+        Vector2D buf = tp - agent->world().self().pos(); buf.setLength(1.0);
+        agent->addSayMessage(new PassMessage(recv,
+                                             tp + buf,
+                                             agent->effector().queuedNextBallPos(),
+                                             agent->effector().queuedNextBallVel()));
+    }
+    return true;
+}
+
+
+bool Body_Pass::LeadPass(PlayerAgent* agent)
+{
+    if (!agent->world().self().isKickable()) return false;
+
+    Vector2D tp; double fs = 0.0; int recv = Unum_Unknown;
+    if (!get_best_lead(agent->world(), &tp, &fs, &recv)) return false;
+
+    agent->debugClient().addMessage("pass:lead-1step");
+    agent->debugClient().setTarget(tp);
+    // 一脚能打到的最大“有效初速”上限（与你原 fallback 一致）
+    fs = std::min(fs, agent->world().self().kickRate() * ServerParam::i().maxPower());
+
+    // 直接一脚踢。如果一脚达不到目标初速，execute 会返回 false
+    if (!Body_KickOneStep(tp, fs).execute(agent)) {
+        return false;
+    }
+
+    if (agent->config().useCommunication() && recv != Unum_Unknown) {
+        Vector2D buf = tp - agent->world().self().pos(); buf.setLength(1.0);
+        agent->addSayMessage(new PassMessage(recv,
+                                             tp + buf,
+                                             agent->effector().queuedNextBallPos(),
+                                             agent->effector().queuedNextBallVel()));
+    }
+    return true;
+}
+
+bool Body_Pass::ThroughPass(PlayerAgent* agent)
+{
+    if (!agent->world().self().isKickable()) return false;
+
+    Vector2D tp; double fs = 0.0; int recv = Unum_Unknown;
+    if (!get_best_through(agent->world(), &tp, &fs, &recv)) return false;
+
+    agent->debugClient().addMessage("pass:through-1step");
+    agent->debugClient().setTarget(tp);
+    // 一脚能打到的最大“有效初速”上限（与你原 fallback 一致）
+    fs = std::min(fs, agent->world().self().kickRate() * ServerParam::i().maxPower());
+
+    // 直接一脚踢。如果一脚达不到目标初速，execute 会返回 false
+    if (!Body_KickOneStep(tp, fs).execute(agent)) {
+        return false;
+    }
+
+    if (agent->config().useCommunication() && recv != Unum_Unknown) {
+        Vector2D buf = tp - agent->world().self().pos(); buf.setLength(1.0);
+        agent->addSayMessage(new PassMessage(recv,
+                                             tp + buf,
+                                             agent->effector().queuedNextBallPos(),
+                                             agent->effector().queuedNextBallVel()));
+    }
+    return true;
+}
+bool Body_Pass::isDirectPassExecutable(PlayerAgent* agent)
+{
+    if (!agent->world().self().isKickable()) return false;
+
+    Vector2D tp; double fs = 0.0; int recv = Unum_Unknown;
+    if (!get_best_direct(agent->world(), &tp, &fs, &recv)) return false;
+
+    // 一脚最大可实现初速上限，避免给出不可达速度
+    const double kick_cap = agent->world().self().kickRate() * ServerParam::i().maxPower();
+    fs = std::max(0.01, std::min(fs, kick_cap));
+
+    return Body_KickOneStep(tp, fs).isExecutable(agent);
+}
+
+bool Body_Pass::isLeadPassExecutable(PlayerAgent* agent)
+{
+    if (!agent->world().self().isKickable()) return false;
+
+    Vector2D tp; double fs = 0.0; int recv = Unum_Unknown;
+    if (!get_best_lead(agent->world(), &tp, &fs, &recv)) return false;
+
+    const double kick_cap = agent->world().self().kickRate() * ServerParam::i().maxPower();
+    fs = std::max(0.01, std::min(fs, kick_cap));
+
+    return Body_KickOneStep(tp, fs).isExecutable(agent);
+}
+
+bool Body_Pass::isThroughPassExecutable(PlayerAgent* agent)
+{
+    if (!agent->world().self().isKickable()) return false;
+
+    Vector2D tp; double fs = 0.0; int recv = Unum_Unknown;
+    if (!get_best_through(agent->world(), &tp, &fs, &recv)) return false;
+
+    const double kick_cap = agent->world().self().kickRate() * ServerParam::i().maxPower();
+    fs = std::max(0.01, std::min(fs, kick_cap));
+
+    return Body_KickOneStep(tp, fs).isExecutable(agent);
 }

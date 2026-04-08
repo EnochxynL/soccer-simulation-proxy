@@ -217,6 +217,19 @@ Body_AdvanceBall2009::execute( PlayerAgent * agent )
     return true;
 }
 
+
+bool
+Body_AdvanceBall2009::isExecutable( PlayerAgent * agent )
+{
+    const WorldModel & wm = agent->world();
+
+    if ( ! wm.self().isKickable() )
+    {
+        return false;
+    }
+
+    return true;
+}
 /*-------------------------------------------------------------------*/
 /*!
 

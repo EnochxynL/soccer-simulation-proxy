@@ -82,7 +82,7 @@ public:
       \return true if action is performed
     */
     bool execute( rcsc::PlayerAgent * agent );
-
+    bool isExecutable( rcsc::PlayerAgent * agent );
     /*!
       \brief get the result ball position
       \return ball position after kick

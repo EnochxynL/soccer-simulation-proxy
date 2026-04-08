@@ -65,7 +65,7 @@ public:
       \return true if action is performed
     */
     bool execute( rcsc::PlayerAgent * agent );
-
+    bool isExecutable( rcsc::PlayerAgent * agent );
     /*!
       \brief calculate best interception point using cached table
       \param wm const refefence to the WorldModel

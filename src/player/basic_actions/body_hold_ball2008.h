@@ -125,7 +125,7 @@ public:
       \return true if action is performed
     */
     bool execute( rcsc::PlayerAgent * agent );
-
+    bool isExecutable( rcsc::PlayerAgent * agent );
 
 private:
 
@@ -135,6 +135,7 @@ private:
       \return true if action is performed
     */
     bool avoidOpponent( rcsc::PlayerAgent * agent );
+    bool isAvoidOpponentExecutable( rcsc::PlayerAgent * agent );
 
     /*!
       \brief search the best keep point
@@ -173,19 +174,22 @@ private:
       \return true if action is performed
     */
     bool turnToPoint( rcsc::PlayerAgent * agent );
-
+    bool isTurnToPointExecutable( rcsc::PlayerAgent * agent );
     /*!
       \brief keep the ball at body front
       \param agent pointer to agent itself
       \return true if action is performed
     */
     bool keepFront( rcsc::PlayerAgent * agent );
+    bool isKeepFrontExecutable( rcsc::PlayerAgent * agent );
 
     /*!
       \brief keep the ball at reverse point from the kick target point
       \param agent pointer to agent itself
      */
     bool keepReverse( rcsc::PlayerAgent * agent );
+    bool isKeepReverseExecutable( rcsc::PlayerAgent * agent );
+    
 
 };
 

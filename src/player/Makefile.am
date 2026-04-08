@@ -7,7 +7,8 @@ noinst_PROGRAMS = sample_player
 sample_player_CPPFLAGS = -I$(top_srcdir)/src/player/planner -I$(top_srcdir)/src/player/setplay
 sample_player_CXXFLAGS = -W -Wall
 sample_player_LDFLAGS =
-sample_player_LDADD =
+sample_player_LDADD = -lrt
+
 
 sample_player_SOURCES = \
 	basic_actions/basic_actions.cpp \

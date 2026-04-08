@@ -75,7 +75,7 @@ public:
       { }
 
     bool execute( rcsc::PlayerAgent * agent );
-
+    bool isExecutable( rcsc::PlayerAgent * agent );
     /*!
       \brief get the result kick sequence
       \return kick sequence object

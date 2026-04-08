@@ -149,6 +149,12 @@ Body_Intercept2018::execute( PlayerAgent * agent )
     return true;
 }
 
+bool
+Body_Intercept2018::isExecutable( PlayerAgent * agent )
+{
+    return true;
+}
+
 /*-------------------------------------------------------------------*/
 /*!
 

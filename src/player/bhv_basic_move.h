@@ -35,9 +35,11 @@ class Bhv_BasicMove
 public:
     Bhv_BasicMove()
       { }
-
+    bool isTackleExecutable( rcsc::PlayerAgent * agent );
+    bool doTackle( rcsc::PlayerAgent * agent );
     bool execute( rcsc::PlayerAgent * agent );
-
+    bool doIntercept( rcsc::PlayerAgent * agent );
+    bool isInterceptExcutable(rcsc::PlayerAgent * agent);
 private:
     double getDashPower( const rcsc::PlayerAgent * agent );
 };

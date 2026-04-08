@@ -101,6 +101,22 @@ Body_Dribble2008::execute( PlayerAgent * agent )
     return true;
 }
 
+bool
+Body_Dribble2008::isExecutable( PlayerAgent * agent )
+{
+
+    if ( ! agent->world().self().isKickable() )
+    {
+        return Body_Intercept().isExecutable( agent );
+    }
+
+    if ( ! agent->world().ball().velValid() )
+    {
+        return Body_StopBall().isExecutable( agent );
+    }
+
+    return true;
+}
 /*-------------------------------------------------------------------*/
 /*!
 

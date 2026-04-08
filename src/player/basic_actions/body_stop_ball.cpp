@@ -100,6 +100,38 @@ Body_StopBall::execute( PlayerAgent * agent )
                           accel_angle - wm.self().body() );
 }
 
+bool
+Body_StopBall::isExecutable( PlayerAgent * agent )
+{
+    const WorldModel & wm = agent->world();
+
+    if ( ! wm.self().isKickable() )
+    {
+        return false;
+    }
+
+    if ( ! wm.ball().velValid() )
+    {
+
+        Vector2D required_accel = wm.self().vel() - wm.ball().rpos();
+        double kick_power = required_accel.r() / wm.self().kickRate();
+        kick_power *= 0.5;
+
+        return true;
+    }
+
+    double accel_radius = 0.0;
+    AngleDeg accel_angle;
+    calcAccel( agent, &accel_radius, &accel_angle );
+
+    if ( accel_radius < 0.02 )
+    {
+
+        return false;
+    }
+
+    return true;
+}
 /*-------------------------------------------------------------------*/
 /*!
 

@@ -119,6 +119,44 @@ Body_HoldBall2008::execute( PlayerAgent * agent )
     return Body_StopBall().execute( agent );
 }
 
+bool
+Body_HoldBall2008::isExecutable( PlayerAgent * agent )
+{
+
+    const WorldModel & wm = agent->world();
+
+    if ( ! wm.self().isKickable() )
+    {
+        return false;
+    }
+
+    if ( ! wm.ball().velValid() )
+    {
+        return Body_StopBall().isExecutable( agent );
+    }
+
+    if ( isKeepReverseExecutable( agent ) )
+    {
+        return true;
+    }
+
+    if ( isTurnToPointExecutable( agent ) )
+    {
+        return true;
+    }
+
+    if ( isKeepFrontExecutable( agent ) )
+    {
+        return true;
+    }
+
+    if ( isAvoidOpponentExecutable( agent ) )
+    {
+        return true;
+    }
+
+    return Body_StopBall().isExecutable( agent );
+}
 /*-------------------------------------------------------------------*/
 /*!
 
@@ -155,6 +193,20 @@ Body_HoldBall2008::avoidOpponent( PlayerAgent * agent )
     return true;
 }
 
+bool
+Body_HoldBall2008::isAvoidOpponentExecutable( PlayerAgent * agent )
+{
+    const WorldModel & wm = agent->world();
+
+    Vector2D point = searchKeepPoint( wm );
+
+    if ( ! point.isValid() )
+    {
+        return false;
+    }
+
+    return true;
+}
 /*-------------------------------------------------------------------*/
 /*!
 
@@ -831,6 +883,51 @@ Body_HoldBall2008::keepFront( PlayerAgent * agent )
     return true;
 }
 
+
+bool
+Body_HoldBall2008::isKeepFrontExecutable( PlayerAgent * agent )
+{
+    const ServerParam & SP = ServerParam::i();
+    const double max_pitch_x = ( SP.keepawayMode()
+                                 ? SP.keepawayLength() * 0.5 - 0.2
+                                 : SP.pitchHalfLength() - 0.2 );
+    const double max_pitch_y = ( SP.keepawayMode()
+                                 ? SP.keepawayWidth() * 0.5 - 0.2
+                                 : SP.pitchHalfWidth() - 0.2 );
+
+    const WorldModel & wm = agent->world();
+    const double front_keep_dist
+        = wm.self().playerType().playerSize()
+        + SP.ballSize() + 0.05;
+    const Vector2D my_next = wm.self().pos() + wm.self().vel();
+
+    Vector2D front_pos
+        = my_next
+        + Vector2D::polar2vector( front_keep_dist, wm.self().body() );
+
+    if ( front_pos.absX() > max_pitch_x
+         || front_pos.absY() > max_pitch_y )
+    {
+        return false;
+    }
+
+    Vector2D ball_move = front_pos - wm.ball().pos();
+    Vector2D kick_accel = ball_move - wm.ball().vel();
+    double kick_power = kick_accel.r() / wm.self().kickRate();
+
+    // can kick to the point by 1 step kick
+    if ( kick_power > SP.maxPower() )
+    {
+        return false;
+    }
+    double score = evaluateKeepPoint( wm, front_pos );
+    if ( score < DEFAULT_SCORE - 1.0e-5 )
+    {
+        return false;
+    }
+
+    return true;
+}
 /*-------------------------------------------------------------------*/
 /*!
 
@@ -943,6 +1040,99 @@ Body_HoldBall2008::keepReverse( PlayerAgent * agent )
     return false;
 }
 
+bool
+Body_HoldBall2008::isKeepReverseExecutable( PlayerAgent * agent )
+{
+    if ( ! M_kick_target_point.isValid() )
+    {
+        return false;
+    }
+
+    const WorldModel & wm = agent->world();
+    const ServerParam & SP = ServerParam::i();
+
+    const double max_pitch_x = ( SP.keepawayMode()
+                                 ? SP.keepawayLength() * 0.5 - 0.2
+                                 : SP.pitchHalfLength() - 0.2 );
+    const double max_pitch_y = ( SP.keepawayMode()
+                                 ? SP.keepawayWidth() * 0.5 - 0.2
+                                 : SP.pitchHalfWidth() - 0.2 );
+
+    //const Vector2D my_inertia = wm.self().inertiaFinalPoint();
+    const Vector2D my_inertia = wm.self().pos() + wm.self().vel();
+
+    const double my_noise = wm.self().vel().r() * SP.playerRand();
+    const double current_dir_diff_rate
+        = ( wm.ball().angleFromSelf() - wm.self().body() ).abs() / 180.0;
+    const double current_dist_rate
+        = ( wm.ball().distFromSelf()
+            - wm.self().playerType().playerSize()
+            - SP.ballSize() )
+        / wm.self().playerType().kickableMargin();
+    const double current_pos_rate
+        = 0.5 + 0.25 * ( current_dir_diff_rate + current_dist_rate );
+    const double current_speed_rate
+        = 0.5 + 0.5 * ( wm.ball().vel().r()
+                        / ( SP.ballSpeedMax() * SP.ballDecay() ) );
+
+    const AngleDeg keep_angle = ( my_inertia - M_kick_target_point ).th();
+    const double dir_diff = ( keep_angle - wm.self().body() ).abs();
+    const double min_dist = ( wm.self().playerType().playerSize()
+                              + SP.ballSize()
+                              + 0.2 );
+
+    double keep_dist
+        = wm.self().playerType().playerSize()
+        + wm.self().playerType().kickableMargin() * 0.5
+        + ServerParam::i().ballSize();
+
+    const Vector2D unit_vec = Vector2D::polar2vector( 1.0, keep_angle );
+    for ( ; keep_dist > min_dist; keep_dist -= 0.05 )
+    {
+        Vector2D keep_pos = my_inertia + unit_vec * keep_dist;
+
+        if ( keep_pos.absX() > max_pitch_x
+             || keep_pos.absY() > max_pitch_y )
+        {
+            continue;
+        }
+
+        Vector2D ball_move = keep_pos - wm.ball().pos();
+        Vector2D kick_accel = ball_move - wm.ball().vel();
+        double kick_power = kick_accel.r() / wm.self().kickRate();
+
+        if ( kick_power > SP.maxPower() )
+        {
+            continue;
+        }
+
+        double move_dist = ball_move.r();
+        double ball_noise = move_dist * SP.ballRand();
+        double max_kick_rand
+            = wm.self().playerType().kickRand()
+            * ( kick_power / SP.maxPower() )
+            * ( current_pos_rate + current_speed_rate );
+        if ( ( my_noise + ball_noise + max_kick_rand )
+             > wm.self().playerType().kickableArea() - keep_dist - 0.1 )
+        {
+            continue;
+        }
+
+        double new_krate = wm.self().playerType().kickRate( keep_dist, dir_diff );
+        if ( move_dist * SP.ballDecay() > new_krate * SP.maxPower() )
+        {
+            continue;
+        }
+
+        double score = evaluateKeepPoint( wm, keep_pos );
+        if ( score > DEFAULT_SCORE + 1.0e-5 )
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
 /*-------------------------------------------------------------------*/
 /*!
 
@@ -1028,5 +1218,67 @@ Body_HoldBall2008::turnToPoint( PlayerAgent * agent )
                   score );
     agent->debugClient().addMessage( "HoldTurn" );
     Body_TurnToPoint( face_point, 100 ).execute( agent );
+    return true;
+}
+
+
+bool
+Body_HoldBall2008::isTurnToPointExecutable( PlayerAgent * agent )
+{
+    const ServerParam & SP = ServerParam::i();
+    const double max_pitch_x = ( SP.keepawayMode()
+                                 ? SP.keepawayLength() * 0.5 - 0.2
+                                 : SP.pitchHalfLength() - 0.2 );
+    const double max_pitch_y = ( SP.keepawayMode()
+                                 ? SP.keepawayWidth() * 0.5 - 0.2
+                                 : SP.pitchHalfWidth() - 0.2 );
+
+    const WorldModel & wm = agent->world();
+    const Vector2D my_next = wm.self().pos() + wm.self().vel();
+    const Vector2D ball_next = wm.ball().pos() + wm.ball().vel();
+
+    if ( ball_next.absX() > max_pitch_x
+         || ball_next.absY() > max_pitch_y )
+    {
+        return false;
+    }
+
+    const double my_noise = wm.self().vel().r() * SP.playerRand();
+    const double ball_noise = wm.ball().vel().r() * SP.ballRand();
+
+    const double next_ball_dist = my_next.dist( ball_next );
+    if ( next_ball_dist > ( wm.self().playerType().kickableArea()
+                            - my_noise
+                            - ball_noise
+                            - 0.15 ) )
+    {
+        return false;
+    }
+
+    Vector2D face_point( 0.0, 0.0 );
+    if ( ! SP.keepawayMode() )
+    {
+        face_point.x =  SP.pitchHalfLength() - 5.0;
+    }
+
+    if ( M_do_turn )
+    {
+        face_point = M_turn_target_point;
+    }
+
+    const Vector2D my_inertia = wm.self().inertiaFinalPoint();
+    AngleDeg target_angle = ( face_point - my_inertia ).th();
+
+    if ( ( wm.self().body() - target_angle ).abs() < 5.0 )
+    {
+        return false;
+    }
+
+    double score = evaluateKeepPoint( wm, ball_next );
+    if ( score < DEFAULT_SCORE - 1.0e-5 )
+    {
+        return false;
+    }
+
     return true;
 }

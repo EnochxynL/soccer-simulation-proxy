@@ -40,14 +40,17 @@ public:
         : M_min_probability( min_prob )
         , M_body_thr( body_thr )
       { }
-
+    bool isExecutable( rcsc::PlayerAgent * agent);
     bool execute( rcsc::PlayerAgent * agent );
-
 private:
 
     bool executeOld( rcsc::PlayerAgent * agent );
     bool executeV12( rcsc::PlayerAgent * agent );
     bool executeV14( rcsc::PlayerAgent * agent,
+                     const bool use_foul );
+    bool isExecutableOld( rcsc::PlayerAgent * agent );
+    bool isExecutableV12( rcsc::PlayerAgent * agent );
+    bool isExecutableV14( rcsc::PlayerAgent * agent,
                      const bool use_foul );
 };
 

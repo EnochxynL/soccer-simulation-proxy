@@ -123,3 +123,45 @@ Bhv_BasicMove::execute( PlayerAgent * agent )
 
     return true;
 }
+
+
+bool
+Bhv_BasicMove::doIntercept( PlayerAgent * agent )
+{
+        Body_Intercept().execute( agent );
+        agent->setNeckAction( new Neck_OffensiveInterceptNeck() );
+        return true;
+}
+
+bool Bhv_BasicMove::isTackleExecutable(rcsc::PlayerAgent * agent)
+{
+    return Bhv_BasicTackle( 0.8, 80.0 ).isExecutable( agent );
+}
+
+bool Bhv_BasicMove::doTackle(rcsc::PlayerAgent * agent)
+{
+    
+    return Bhv_BasicTackle( 0.8, 80.0 ).execute( agent );
+}
+
+bool
+Bhv_BasicMove::isInterceptExcutable( PlayerAgent * agent )
+{
+    /*--------------------------------------------------------*/
+    // 判断是否追球（intercept）
+    const WorldModel & wm = agent->world();
+    const int self_min = wm.interceptTable().selfStep();
+    const int mate_min = wm.interceptTable().teammateStep();
+    const int opp_min = wm.interceptTable().opponentStep();
+    
+    if ( ! wm.kickableTeammate()
+         && ( self_min <= 3
+              || ( self_min <= mate_min
+                   && self_min < opp_min + 3 )
+              )
+         )
+    {
+        return Body_Intercept().isExecutable( agent );
+    }
+    return false;
+}

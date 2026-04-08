@@ -155,6 +155,72 @@ Body_KickOneStep::execute( PlayerAgent * agent )
     M_kick_step = 1;
 
     return agent->doKick( kick_power, kick_dir );
+    std::cerr << " one step kick!"  << std::endl;
+}
+
+
+bool
+Body_KickOneStep::isExecutable( PlayerAgent * agent )
+{
+    const WorldModel & wm = agent->world();
+    if ( ! wm.self().isKickable() )
+    {
+        return false;
+    }
+
+    Vector2D ball_vel = wm.ball().vel();
+
+    if ( ! wm.ball().velValid() )
+    {
+        if ( ! M_force_mode )
+        {
+            return Body_StopBall().isExecutable( agent );
+        }
+
+        ball_vel.assign( 0.0, 0.0 );
+    }
+
+    M_first_speed = std::min( M_first_speed, ServerParam::i().ballSpeedMax() );
+
+    const AngleDeg target_angle = ( M_target_point - wm.ball().pos() ).th();
+
+    // Vector2D first_vel = get_max_possible_vel( target_angle,
+    //                                            wm.self().kickRate(),
+    //                                            ball_vel );
+    Vector2D first_vel = KickTable::calc_max_velocity( target_angle,
+                                                       wm.self().kickRate(),
+                                                       ball_vel );
+    double first_speed = first_vel.r();
+
+    if ( first_speed > M_first_speed )
+    {
+        first_vel.setLength( M_first_speed );
+        first_speed = M_first_speed;
+    }
+
+    const Vector2D kick_accel = first_vel - ball_vel;
+
+    double kick_power = kick_accel.r() / wm.self().kickRate();
+    const AngleDeg kick_dir = kick_accel.th() - wm.self().body();
+
+    if ( kick_power > ServerParam::i().maxPower() + 0.01 )
+    {
+
+        if ( first_speed < 0.001 )
+        {
+            return Body_StopBall().isExecutable( agent );
+        }
+
+        if ( ! M_force_mode )
+        {
+            return Body_HoldBall2008( true,
+                                      M_target_point,
+                                      M_target_point
+                                      ).isExecutable( agent );
+        }
+    }
+
+    return true;
 }
 
 #if 0

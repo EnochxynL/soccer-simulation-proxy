@@ -137,7 +137,71 @@ Bhv_StrictCheckShoot::execute( PlayerAgent * agent )
     return false;
 }
 
+bool
+Bhv_StrictCheckShoot::isExecutable( PlayerAgent * agent )
+{
+    const WorldModel & wm = agent->world();
 
+    if ( ! wm.self().isKickable() )
+    {
+        return false;
+    }
+
+    const ShootGenerator::Container & cont = ShootGenerator::instance().courses( wm );
+
+    // update
+    if ( cont.empty() )
+    {
+
+        return false;
+    }
+
+    ShootGenerator::Container::const_iterator best_shoot
+        = std::min_element( cont.begin(),
+                            cont.end(),
+                            ShootGenerator::ScoreCmp() );
+
+    if ( best_shoot == cont.end() )
+    {
+
+        return false;
+    }
+
+    // it is necessary to evaluate shoot courses
+
+
+    Vector2D one_step_vel
+        = KickTable::calc_max_velocity( ( best_shoot->target_point_ - wm.ball().pos() ).th(),
+                                        wm.self().kickRate(),
+                                        wm.ball().vel() );
+    double one_step_speed = one_step_vel.r();
+
+
+    if ( one_step_speed > best_shoot->first_ball_speed_ * 0.99 )
+    {
+        if ( Body_SmartKick( best_shoot->target_point_,
+                             one_step_speed,
+                             one_step_speed * 0.99 - 0.0001,
+                             1 ).isExecutable( agent ) )
+        {
+             return true;
+        }
+    }
+
+    if ( Body_SmartKick( best_shoot->target_point_,
+                         best_shoot->first_ball_speed_,
+                         best_shoot->first_ball_speed_ * 0.99,
+                         3 ).isExecutable( agent ) )
+    {
+        if ( ! doTurnNeckToShootPoint( agent, best_shoot->target_point_ ) )
+        {
+
+        }
+        return true;
+    }
+
+    return false;
+}
 /*-------------------------------------------------------------------*/
 /*!
 

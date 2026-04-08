@@ -42,7 +42,13 @@ class SampleCoach
     : public rcsc::CoachAgent {
 private:
     typedef std::vector< const rcsc::PlayerType * > PlayerTypePtrCont;
-
+    
+    void*   shm_ptr_   = nullptr;
+    int     shm_fd_    = -1;
+    std::string shm_name_ = "/coach_global_state";  // 可用 --shm-name 传参
+    static constexpr int SHM_SIZE = 1 + 4 + 136 * 4 + 4 + 4;
+    bool initSharedMemory();
+    void writeSharedMemory();   // 每帧调用
 
     int M_opponent_player_types[11];
 
