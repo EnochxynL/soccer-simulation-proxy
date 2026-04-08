@@ -1,12 +1,18 @@
-# CLS Proxy for Ubuntu
+# CLS Proxy for Ubuntu 24.04
 
-`sudo apt install thrift-compiler protobuf-compiler-grpc libgrpc++-dev libthrift-dev`
+## 环境配置
+
+这种东西应该已经装好了`sudo apt show build-essential cmake`
+
+## 依赖
 
 https://stackoverflow.com/questions/56794557/why-there-is-no-precompiled-c-library-for-grpc
-
 https://ubuntu.pkgs.org/24.04/ubuntu-universe-amd64/libgrpc-dev_1.51.1-4.1build5_amd64.deb.html
 https://ubuntu.pkgs.org/22.04/ubuntu-universe-amd64/libgrpc-dev_1.30.2-3build6_amd64.deb.html
-用24.04！
+
+本项目的依赖在Ubuntu 24.04下才能发现CMake包，否则需要手动编译库。安装这几个包
+
+`sudo apt install thrift-compiler protobuf-compiler-grpc libgrpc++-dev libthrift-dev`
 
 # CLS Proxy for MSYS2-UCRT64
 
@@ -20,13 +26,17 @@ https://ubuntu.pkgs.org/22.04/ubuntu-universe-amd64/libgrpc-dev_1.30.2-3build6_a
 - 安装autoconf、automake、libtool构建工具`pacman -S mingw-w64-ucrt-x86_64-autotools`
 - 安装cmake构建工具`mingw-w64-ucrt-x86_64-cmake`
 
-## 构建
+## 依赖
 
 本项目的依赖是这两个
 ```sh
 pacman -S mingw-w64-ucrt-x86_64-grpc \
           mingw-w64-ucrt-x86_64-thrift
 ```
+
+# 构建
+
+## 编译
 
 然后就可以使用cmake构建了
 ```sh
@@ -35,9 +45,7 @@ cmake -S . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 
-但是，如果因为GRPC版本不匹配而报错，应当删除`src/grpc-generated`下的`service.pb.cc`和`service.pb.h`重新生成（原文写错了，写成了`src/grpc`目录下的）。
-
-由于我们的GRPC是安装版的，所以`C:\msys64\ucrt64\bin\protoc.exe`和`C:\msys64\ucrt64\bin\grpc_cpp_plugin.exe`可以直接被访问到，所以命令会简单点
+但是，如果因为GRPC版本不匹配而报错，应当删除`src/grpc-generated`下的`service.pb.cc`和`service.pb.h`（原文写错了，写成了`src/grpc`目录下的）重新生成。由于我们的GRPC是安装版的，所以`C:\msys64\ucrt64\bin\protoc.exe`和`C:\msys64\ucrt64\bin\grpc_cpp_plugin.exe`可以直接被访问到，所以命令会简单点
 ```sh
 protoc --proto_path=. --cpp_out=../../src/grpc-generated/ --grpc_out=../../src/grpc-generated/ --plugin=protoc-gen-grpc=grpc_cpp_plugin service.proto
 ```
