@@ -1,24 +1,18 @@
-# CLS Proxy for Ubuntu 24.04
-
-## 环境配置
+# CLS Proxy 在 Ubuntu 24.04 上的依赖
 
 这种东西应该已经装好了`sudo apt show build-essential cmake`
 
-## 依赖
-
-https://stackoverflow.com/questions/56794557/why-there-is-no-precompiled-c-library-for-grpc
-https://ubuntu.pkgs.org/24.04/ubuntu-universe-amd64/libgrpc-dev_1.51.1-4.1build5_amd64.deb.html
-https://ubuntu.pkgs.org/22.04/ubuntu-universe-amd64/libgrpc-dev_1.30.2-3build6_amd64.deb.html
+- https://stackoverflow.com/questions/56794557/why-there-is-no-precompiled-c-library-for-grpc
+- https://ubuntu.pkgs.org/24.04/ubuntu-universe-amd64/libgrpc-dev_1.51.1-4.1build5_amd64.deb.html
+- https://ubuntu.pkgs.org/22.04/ubuntu-universe-amd64/libgrpc-dev_1.30.2-3build6_amd64.deb.html
 
 本项目的依赖在Ubuntu 24.04下才能发现CMake包，否则需要手动编译库。安装这几个包
 
 `sudo apt install thrift-compiler protobuf-compiler-grpc libgrpc++-dev libthrift-dev`
 
-# CLS Proxy for MSYS2-UCRT64
+# CLS Proxy 在 MSYS2-UCRT64 上的依赖
 
 参考自[Wiki](https://github.com/CLSFramework/cross-language-soccer-framework/wiki/Soccer-Simulation-Proxy)
-
-## 环境配置
 
 在MSYS2-UCRT64环境下测试成功。环境部署教程：
 - 安装make等基本构建工具`pacman -S base-devel`
@@ -26,17 +20,13 @@ https://ubuntu.pkgs.org/22.04/ubuntu-universe-amd64/libgrpc-dev_1.30.2-3build6_a
 - 安装autoconf、automake、libtool构建工具`pacman -S mingw-w64-ucrt-x86_64-autotools`
 - 安装cmake构建工具`mingw-w64-ucrt-x86_64-cmake`
 
-## 依赖
-
 本项目的依赖是这两个
 ```sh
 pacman -S mingw-w64-ucrt-x86_64-grpc \
           mingw-w64-ucrt-x86_64-thrift
 ```
 
-# 构建
-
-## 编译
+# CLS Proxy 正式构建
 
 然后就可以使用cmake构建了
 ```sh
@@ -50,7 +40,7 @@ cmake --build build -j
 protoc --proto_path=. --cpp_out=../../src/grpc-generated/ --grpc_out=../../src/grpc-generated/ --plugin=protoc-gen-grpc=grpc_cpp_plugin service.proto
 ```
 
-## 直接执行
+## 临时直接运行
 
 To run the Soccer Simulation Proxy, you can use the following command: (You should run the Soccer Simulation Server and a PlayMaker Server before running the Soccer Simulation Proxy)
 ```sh
@@ -63,10 +53,12 @@ cd build/bin
 $env:Path = "C:\msys64\ucrt64\bin;C:\msys64\usr\bin;$env:Path"
 ```
 
-## 发布后执行
+# CLS Proxy 打包发布
 
 发布可以把需要的DLL都集中到软件目录内，便于在其他平台运行
 - Windows发布用`cmake --install build --prefix dist/windows`
 - Linux发布用`cmake --install build --prefix dist/linux`
 
 发布后，可以把`dist/windows/bin`或`dist/linux/bin`取出来，放在别处运行。
+
+TODO: 目前有一个Bug就是，没能拷贝GRPC相关的库文件。
