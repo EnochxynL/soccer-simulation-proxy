@@ -32,7 +32,7 @@ pacman -S mingw-w64-ucrt-x86_64-grpc \
 ```sh
 rm -r build
 cmake -S . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j8
+cmake --build build -j16
 ```
 
 但是，如果因为GRPC版本不匹配而报错，应当删除`src/grpc-generated`下的`service.pb.cc`和`service.pb.h`（原文写错了，写成了`src/grpc`目录下的）重新生成。由于我们的GRPC是安装版的，所以`C:\msys64\ucrt64\bin\protoc.exe`和`C:\msys64\ucrt64\bin\grpc_cpp_plugin.exe`可以直接被访问到，所以命令会简单点
