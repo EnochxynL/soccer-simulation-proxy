@@ -6,3 +6,4 @@ start.sh
 train.sh
 
 *.o
+build/
