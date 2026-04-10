@@ -156,6 +156,18 @@ install(DIRECTORY
 )
 
 configure_file(
+  ${PROJECT_SOURCE_DIR}/cmake/CollectRuntimeDepsWindows.cmake.in
+  ${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CollectRuntimeDepsWindows.cmake
+  @ONLY
+)
+
+configure_file(
+  ${PROJECT_SOURCE_DIR}/cmake/CollectRuntimeDepsUnix.cmake.in
+  ${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CollectRuntimeDepsUnix.cmake
+  @ONLY
+)
+
+configure_file(
   ${PROJECT_SOURCE_DIR}/cmake/InstallRuntimeDeps.cmake.in
   ${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/InstallRuntimeDeps.cmake
   @ONLY
