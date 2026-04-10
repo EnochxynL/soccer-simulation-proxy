@@ -58,6 +58,6 @@ $env:Path = "C:\msys64\ucrt64\bin;C:\msys64\usr\bin;$env:Path"
 官方使用 Appimage 格式打包，注意请保持github访问通畅
 
 ```sh
-utils/app-image/create_app_images.sh
+bash utils/app-image/create_app_images.sh
 cp -r utils/app-image/soccer-simulation-proxy release
 ```
