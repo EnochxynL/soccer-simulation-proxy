@@ -53,12 +53,11 @@ cd build/bin
 $env:Path = "C:\msys64\ucrt64\bin;C:\msys64\usr\bin;$env:Path"
 ```
 
-# CLS Proxy 打包发布
+# CLS Proxy Appimage 打包发布
 
-发布可以把需要的DLL都集中到软件目录内，便于在其他平台运行
-- Windows发布用`cmake --install build --prefix dist/windows`
-- Linux发布用`cmake --install build --prefix dist/linux`
+官方使用 Appimage 格式打包，注意请保持github访问通畅
 
-发布后，可以把`dist/windows/bin`或`dist/linux/bin`取出来，放在别处运行。
-
-TODO: 目前有一个Bug就是，没能拷贝GRPC相关的库文件。
+```sh
+utils/app-image/create_app_images.sh
+cp -r utils/app-image/soccer-simulation-proxy release
+```

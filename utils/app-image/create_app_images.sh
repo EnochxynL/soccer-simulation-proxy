@@ -9,13 +9,6 @@ if [ ! -f linuxdeploy-x86_64.AppImage ]; then
 fi
 chmod +x linuxdeploy-x86_64.AppImage
 
-PLAYER_APP_IMAGE_DIR_NAME="sample-player-x86_64"
-mkdir -p $PLAYER_APP_IMAGE_DIR_NAME
-COACH_APP_IMAGE_DIR_NAME="sample-coach-x86_64"
-mkdir -p $COACH_APP_IMAGE_DIR_NAME
-TRAINER_APP_IMAGE_DIR_NAME="sample-trainer-x86_64"
-mkdir -p $TRAINER_APP_IMAGE_DIR_NAME
-
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 echo "SCRIPT_DIR=" $SCRIPT_DIR
 
@@ -23,6 +16,15 @@ BUILD_PWD="${SCRIPT_DIR}/../../build/bin/"
 APP_IMAGE_DIR="${SCRIPT_DIR}"
 echo "BUILD_PWD=" $BUILD_PWD
 echo "APP_IMAGE_DIR=" $APP_IMAGE_DIR
+
+cd $SCRIPT_DIR # change cwd to script directory
+
+PLAYER_APP_IMAGE_DIR_NAME="sample-player-x86_64"
+mkdir -p $PLAYER_APP_IMAGE_DIR_NAME
+COACH_APP_IMAGE_DIR_NAME="sample-coach-x86_64"
+mkdir -p $COACH_APP_IMAGE_DIR_NAME
+TRAINER_APP_IMAGE_DIR_NAME="sample-trainer-x86_64"
+mkdir -p $TRAINER_APP_IMAGE_DIR_NAME
 
 echo "Start to create app image for player"
 ./linuxdeploy-x86_64.AppImage --appdir ./$PLAYER_APP_IMAGE_DIR_NAME \

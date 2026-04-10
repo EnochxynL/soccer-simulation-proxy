@@ -50,5 +50,5 @@ src/thrift-generated/soccer_service_types.cpp
 src/thrift-generated/soccer_service_types.h
 idl/test.md
 
-dist/linux/
-dist/windows/
+linuxdeploy-x86_64.AppImage
+release/
