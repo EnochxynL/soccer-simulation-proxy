@@ -2,8 +2,13 @@
 
 set -e
 
-# wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -O linuxdeploy-x86_64.AppImage
-# chmod 777 linuxdeploy-x86_64.AppImage
+# check linuxdeploy-x86_64.AppImage exists
+if [ ! -f linuxdeploy-x86_64.AppImage ]; then
+    echo "linuxdeploy-x86_64.AppImage not found. Downloading..."
+    wget -c "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -O linuxdeploy-x86_64.AppImage
+fi
+chmod +x linuxdeploy-x86_64.AppImage
+
 PLAYER_APP_IMAGE_DIR_NAME="sample-player-x86_64"
 mkdir -p $PLAYER_APP_IMAGE_DIR_NAME
 COACH_APP_IMAGE_DIR_NAME="sample-coach-x86_64"
@@ -23,13 +28,13 @@ echo "APP_IMAGE_DIR=" $APP_IMAGE_DIR
 ldd $BUILD_PWD/sample_player
 
 # find libc and libstdc++ libz dependencies
-LIBRCSC_PATH=$(ldd $BUILD_PWD/sample_player | grep librcsc.so.18 | awk '{ print $3 }')
+LIBRCSC_PATH=$(ldd $BUILD_PWD/sample_player | grep librcsc.so. | awk '{ print $3 }')
 LIBZ_PATH=$(ldd $BUILD_PWD/sample_player | grep libz.so | awk '{ print $3 }')
 LIBSTDCPP_PATH=$(ldd $BUILD_PWD/sample_player | grep libstdc++ | awk '{ print $3 }')
 LIBM_PATH=$(ldd $BUILD_PWD/sample_player | grep libm.so | awk '{ print $3 }')
 LIBGCC_PATH=$(ldd $BUILD_PWD/sample_player | grep libgcc_s.so | awk '{ print $3 }')
 LIBC_PATH=$(ldd $BUILD_PWD/sample_player | grep libc.so | awk '{ print $3 }')
-LIB_THRIFT_PATH=$(ldd $BUILD_PWD/sample_player | grep libthrift-0.1 | awk '{ print $3 }')
+LIB_THRIFT_PATH=$(ldd $BUILD_PWD/sample_player | grep libthrift- | awk '{ print $3 }')
 LIB_SSL_PATH=$(ldd $BUILD_PWD/sample_player | grep libssl.so | awk '{ print $3 }')
 LIB_CRYPTO_PATH=$(ldd $BUILD_PWD/sample_player | grep libcrypto.so | awk '{ print $3 }')
 LIB_PTHREAD_PATH=$(ldd $BUILD_PWD/sample_player | grep libpthread.so | awk '{ print $3 }')
@@ -48,7 +53,7 @@ echo "LIB_PTHREAD_PATH=" $LIB_PTHREAD_PATH
 echo "LIB_DL_PATH=" $LIB_DL_PATH
 
 echo "Start to create app image for player"
-/opt/linuxdeploy/AppRun --appdir ./$PLAYER_APP_IMAGE_DIR_NAME \
+./linuxdeploy-x86_64.AppImage --appdir ./$PLAYER_APP_IMAGE_DIR_NAME \
                                 -e $BUILD_PWD/sample_player \
                                 -l $LIBRCSC_PATH \
                                 -l $LIB_THRIFT_PATH \
@@ -57,7 +62,7 @@ echo "Start to create app image for player"
                                 --output appimage 
 
 echo "Start to create app image for coach"
-/opt/linuxdeploy/AppRun --appdir ./$COACH_APP_IMAGE_DIR_NAME \
+./linuxdeploy-x86_64.AppImage --appdir ./$COACH_APP_IMAGE_DIR_NAME \
                                 -e $BUILD_PWD/sample_coach \
                                 -l $LIBRCSC_PATH \
                                 -l $LIB_THRIFT_PATH \
@@ -66,7 +71,7 @@ echo "Start to create app image for coach"
                                 --output appimage 
 
 echo "Start to create app image for trainer"
-/opt/linuxdeploy/AppRun --appdir ./$TRAINER_APP_IMAGE_DIR_NAME \
+./linuxdeploy-x86_64.AppImage --appdir ./$TRAINER_APP_IMAGE_DIR_NAME \
                                 -e $BUILD_PWD/sample_trainer \
                                 -l $LIBRCSC_PATH \
                                 -l $LIB_THRIFT_PATH \
