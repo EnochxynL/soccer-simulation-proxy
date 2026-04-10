@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=samplecoach
+Name=sample_coach
 Comment=Soccer Simulation Proxy Sample Coach
 TryExec=sample_coach
 Exec=sample_coach
