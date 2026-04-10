@@ -2,3 +2,5 @@
 sample-coach-x86_64/
 sample-player-x86_64/
 sample-trainer-x86_64/
+soccer-simulation-proxy/
+soccer-simulation-proxy.*
